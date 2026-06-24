@@ -95,7 +95,7 @@ Run each command to find the exact file path of each driver:
 find ~/jetauto_ws/src/ -name "*.py" \
   | xargs grep -l "image_raw\|usb_cam\|VideoCapture" 2>/dev/null
 ```
-## Verfication:
+## Verification:
 <img width="656" height="176" alt="image" src="https://github.com/user-attachments/assets/618b106e-3589-479c-afd1-3cb17a1bfcb1" />
 
 ### LiDAR Driver
