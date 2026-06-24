@@ -1,0 +1,85 @@
+# JetAuto Pro — Power-On & Connection Guide
+
+## What Happens When You Power On
+
+1. **Flip the power switch.**
+2. **Wait 20–30 seconds.** During this time the system boots.
+3. **LED1 on the expansion board flashes blue, and the buzzer beeps once.** This indicates both ROS configuration and the device are ready for use. 
+4. **The robot defaults to AP Direct Connection mode** and generates a Wi-Fi network starting with "HW", with the default password "hiwonder". 
+5. **LiDAR behavior depends on model:** the A1 LiDAR (the model on our unit) starts rotating a short time after power-on and keeps spinning continuously.  Before powering on, push the LiDAR's own switch to "ON" — it has a separate switch from the main robot power. 
+6. **If a 7-inch screen is attached,** it shows the system desktop on boot, and on advanced/ultimate kits the robot plays an audio "I'm ready" announcement. 
+
+### If the Wi-Fi hotspot doesn't appear
+Re-check the steps above first. If LED1 is solid blue (not flashing), the robot may already be in LAN mode — press and hold the KEY1 button for 5–10 seconds to switch back to AP mode and the HW network should reappear.  If KEY1 doesn't trigger flashing, the SD card/SSD may not be detected — try reseating it.  If the issue persists after all of this, it may be a board-level fault — contact Hiwonder support. 
+
+---
+
+## Connecting to the Robot
+
+There are **two network modes** and **three connection tools**. Pick one of each.
+
+### Network Modes
+
+| Mode | What it does | Internet access |
+|---|---|---|
+| **AP Direct Connection** (default) | Jetson Nano generates its own Wi-Fi hotspot that your phone/laptop connects to directly  | No |
+| **STA / LAN Mode** | Robot actively joins a Wi-Fi network you specify  | Yes |
+
+Performance is identical in either mode — AP mode is recommended for general day-to-day use since it's simpler to set up. 
+
+### Connection Tools — Which One to Use
+
+| Tool | Type | Best for |
+|---|---|---|
+| **NoMachine** | Full graphical remote desktop | Jetson Nano/Orin Nano/Orin NX boards — visual, intuitive operation  |
+| **VNC** | Full graphical remote desktop | Raspberry Pi 5 boards only  |
+| **MobaXterm** | SSH / command-line only | Any board version — faster, lower resource usage, no desktop GUI  |
+
+Since our unit uses the **Jetson Nano**, default tool is **NoMachine** (GUI) or **MobaXterm** (terminal/SSH — this is what we use for ROS command-line work).
+
+### Default Login Credentials (Jetson Nano)
+
+username: jetauto, password: hiwonder 
+
+> ⚠️ These match the confirmed username (`jetauto`) from our existing setup — consistent with the official default.
+
+### Default IP Addresses
+
+| Mode | IP | Notes |
+|---|---|---|
+| AP Direct Connection | `192.168.149.1` | Fixed default IP when connected to the robot's own "HW" hotspot  |
+| LAN Mode | Varies (e.g. `192.168.11.134`) | Assigned by your router — find it by long-pressing the robot icon in the WonderAi app  |
+| USB Fixed-IP | `192.168.55.1` | Available via Micro-USB cable direct connection (Jetson boards only) — bypasses Wi-Fi entirely  |
+
+> 📝 **Lab-specific note:** Our ROS Master URI is configured at `192.168.0.114:11311`, which means our unit is set up in **LAN mode** on the lab network, not the AP default. Confirm this IP is still current before connecting — LAN-mode IPs can change if the robot reconnects to DHCP.
+
+### Step-by-step: Connecting via MobaXterm (SSH) — most common for our use
+
+1. Connect your laptop to the robot's network (either the `HW...` hotspot in AP mode, or the lab Wi-Fi if in LAN mode).
+2. Open MobaXterm → **Session** → choose **SSH**.
+3. Enter the robot's IP (`192.168.149.1` for AP mode, or the LAN IP — e.g. `192.168.0.114` for our lab setup).
+4. Select the SSH option (third option in the protocol list). 
+5. Enter username in lowercase: jetauto. Press Enter, then enter password: hiwonder (password won't display as you type). 
+6. You're in — you should see a terminal prompt as `jetauto@<hostname>:~$`.
+
+### Step-by-step: Connecting via NoMachine (GUI)
+
+1. Connect to the robot's network as above.
+2. Open NoMachine → enter the robot's IP → **Configure connection to new host**.
+3. Set connection name (e.g. "robot"), enter the host IP, click Add. 
+4. Enter username jetauto / password hiwonder, check "Save this password", click Login. 
+5. The full Jetson Nano desktop opens remotely.
+
+---
+
+## ⚠️ Important Notes Before First Power-On
+
+If the battery voltage is below 10V, charge the robot before operating it.  Keep the robot on a flat surface, away from platform edges, and maintain a safe distance once powered on to avoid injury from unexpected movement.  Avoid letting the robotic arm sit under load for extended periods, as this shortens servo lifespan. 
+
+## Charging
+
+A full charge from 10V to 12.3V takes approximately 3–4 hours.  Always turn off the power switch before charging, and never connect the charger directly to the Jetson Nano's DC port — only to the dedicated power board port, or the board will be damaged.  The charger indicator is red while charging and turns green once full — unplug promptly to avoid overcharging.  If battery voltage drops below 10V during use, the buzzer sounds an alarm. 
+
+---
+
+*Source: Official Hiwonder JetAuto Pro Quick Start Guide ([wiki.hiwonder.com](https://wiki.hiwonder.com/projects/JetAutoPi/en/latest/docs/1.quick_start_guide.html)). Lab-specific IP/network values confirmed separately for our unit — verify before relying on them, as LAN IPs can change.*
