@@ -59,7 +59,7 @@ find ~/jetauto_ws/src/ -name "package.xml" \
   | sort
 ```
 
-> ## Verfication:
+> ## Verification:
 > <img width="928" height="283" alt="image" src="https://github.com/user-attachments/assets/526eb275-a5e7-4268-9721-fcb1415f17cd" />
 
 
