@@ -131,7 +131,7 @@ src/
 │   ├── launch/
 │   ├── config/
 │   └── maps/
-...(paste full real output here)
+
 ```
 
 ---
@@ -147,7 +147,8 @@ tree -L 2 ~/jetauto_ws/src/jetauto_bringup
 
 ### `jetauto_bringup`
 **Screenshot:**
-> 📷 *[Insert screenshot here]*
+> <img width="785" height="596" alt="{62F4E9DA-1224-41C5-8797-CD9C01987C7B}" src="https://github.com/user-attachments/assets/9b53364e-900e-4536-872a-fa3a39308c9b" />
+
 
 **Result:**
 ```
@@ -161,13 +162,6 @@ jetauto_bringup/
 ```
 
 ### `jetauto_navigation`
-**Screenshot:**
-> 📷 *[Insert screenshot here]*
-
-**Result:**
-```
-(paste real output)
-```
 
 ### `jetauto_slam`
 **Screenshot:**
