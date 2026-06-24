@@ -103,6 +103,8 @@ find ~/jetauto_ws/src/ -name "*.py" \
 find ~/jetauto_ws/src/ -name "*.py" \
   | xargs grep -l "LaserScan\|/scan\|ydlidar" 2>/dev/null
 ```
+## Verification: 
+<img width="736" height="97" alt="image" src="https://github.com/user-attachments/assets/34625651-81a5-4234-983d-b0c4dab23f49" />
 
 ### Motor / Chassis Driver
 ```bash
