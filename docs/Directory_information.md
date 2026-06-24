@@ -161,45 +161,30 @@ jetauto_bringup/
 └── CMakeLists.txt
 ```
 
-### `jetauto_navigation`
-
-### `jetauto_slam`
-**Screenshot:**
-> 📷 *[Insert screenshot here]*
-
-**Result:**
-```
-(paste real output)
-```
-
 > Repeat this section for any other package a lab user is likely to need (`jetauto_peripherals`, `jetauto_app`, etc.)
 
 ---
 
 ## 6. All Launch Files in the Workspace
 
-Critical for `workflows.md` too — this is the master list of every `roslaunch`-able file.
+This is the master list of every `roslaunch`-able file.
 
 **Command:**
 ```bash
 find ~/jetauto_ws/src -name "*.launch"
 ```
 
-**Screenshot:**
-> 📷 *[Insert screenshot here]*
-
 **Result:**
 ```
 /home/jetauto/jetauto_ws/src/jetauto_bringup/launch/jetauto_bringup.launch
 /home/jetauto/jetauto_ws/src/jetauto_navigation/launch/navigation.launch
-...(paste full real output here)
 ```
 
 | Launch file | What it starts |
 |---|---|
 | `jetauto_bringup.launch` | Core robot bringup (motors, base drivers) |
 | `navigation.launch` | Navigation stack | 
-| *(fill in others)* | |
+
 
 ---
 
@@ -213,12 +198,8 @@ find ~/jetauto_ws/src -name "*.yaml"
 ```
 
 **Screenshot:**
-> 📷 *[Insert screenshot here]*
+> <img width="1540" height="316" alt="{BBA4DE0F-EA8C-4AA7-8E5A-8AB1B8401DB2}" src="https://github.com/user-attachments/assets/075910a2-9e59-440c-98e2-60a5eefb2bc3" />
 
-**Result:**
-```
-(paste full real output here)
-```
 
 ---
 
@@ -232,5 +213,13 @@ tree -L 3 -I '__pycache__|*.pyc|build|devel' ~/jetauto_ws/src > tree_output.txt
 ```
 
 ---
+## Note 
+If the tree command is not installed then we have to install and perform the same steps.
 
-*Last updated: [DATE] by [NAME]*
+```bash
+sudo apt install tree
+```
+**Screenshot:**
+
+<img width="700" height="86" alt="{72AA3100-0C68-40B8-9EDF-B512E10ACF3E}" src="https://github.com/user-attachments/assets/d88c929f-ffcd-4e89-b461-80644ef55414" />
+
