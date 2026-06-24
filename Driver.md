@@ -111,6 +111,8 @@ find ~/jetauto_ws/src/ -name "*.py" \
 find ~/jetauto_ws/src/ -name "*.py" \
   | xargs grep -l "cmd_vel\|Twist\|motor" 2>/dev/null
 ```
+## Verification:
+<img width="905" height="216" alt="image" src="https://github.com/user-attachments/assets/1511e1b5-75f7-4842-a88e-d6a78b7f662d" />
 
 ### Servo / Arm Driver
 ```bash
