@@ -59,8 +59,9 @@ find ~/jetauto_ws/src/ -name "package.xml" \
   | sort
 ```
 
-> **Note — Expected packages you will see**
-> `jetauto_app`, `jetauto_controller`, `usb_cam`, `ydlidar_ros`, `hiwonder_servo_msgs`, `robot_description`, `jetauto_slam`, `jetauto_navigation`
+> ## Verfication:
+> <img width="928" height="283" alt="image" src="https://github.com/user-attachments/assets/526eb275-a5e7-4268-9721-fcb1415f17cd" />
+
 
 ---
 
