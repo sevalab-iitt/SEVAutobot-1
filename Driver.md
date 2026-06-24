@@ -34,8 +34,8 @@ Every driver lives as a `.py` or `.cpp` file inside a ROS package under `~/jetau
 
 ```bash
 # From your laptop
-ssh jetauto@192.168.1.xxx      # replace xxx with robot IP
-# password: hiwonder
+ssh jetauto@192.168.0.114        
+  password: hiwonder
 
 # Source the workspace immediately
 source ~/jetauto_ws/devel/setup.bash
