@@ -50,6 +50,7 @@ Example information displayed:
 * Memory Usage
 * Hostname
 * Architecture
+<img width="928" height="456" alt="{FB2C0276-7C35-4B46-8BB0-360B57E9A852}" src="https://github.com/user-attachments/assets/19779d6b-9bd8-4504-80fc-88c559ba4de0" />
 
 ---
 
