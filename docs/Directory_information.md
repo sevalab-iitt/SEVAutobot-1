@@ -19,7 +19,7 @@ find / -maxdepth 4 -iname "jetauto_ws" 2>/dev/null
 > <img width="880" height="49" alt="{C0C320AD-166E-4D7C-A383-C95973FE4476}" src="https://github.com/user-attachments/assets/5760cc24-6a36-4120-8747-f8aa6fea2d79" />
 
 
-**Result (text form, fill in once confirmed):**
+**Result (text form):**
 ```
 /home/jetauto/jetauto_ws
 ```
@@ -36,7 +36,8 @@ tree -L 1 ~/jetauto_ws
 ```
 
 **Screenshot:**
-> 📷 *[Insert screenshot here]*
+> <img width="601" height="204" alt="{00493946-3E08-4C28-9197-55475F3316DE}" src="https://github.com/user-attachments/assets/578f3f28-c16e-4a57-b0cd-4ca0d6dfe3ce" />
+
 
 **Result:**
 ```
@@ -60,7 +61,8 @@ ls ~/jetauto_ws/src
 ```
 
 **Screenshot:**
-> 📷 *[Insert screenshot here]*
+> <img width="1167" height="97" alt="{09B8FE02-5EEA-48E8-904B-FC215E3785A1}" src="https://github.com/user-attachments/assets/1fbcdfa3-cca5-40b9-a0cc-c42f924c3636" />
+
 
 **Result:**
 ```
@@ -69,7 +71,7 @@ jetauto_bringup
 jetauto_navigation
 jetauto_slam
 jetauto_peripherals
-...(fill in full list from actual output)
+
 ```
 
 | Package | Purpose (fill in based on what you find) |
@@ -92,7 +94,11 @@ tree -L 3 -I '__pycache__|*.pyc|build|devel' ~/jetauto_ws/src
 ```
 
 **Screenshot:**
-> 📷 *[Insert screenshot here — this is likely your longest/most important screenshot]*
+> <img width="1022" height="920" alt="{0474097C-E967-45D4-80DC-A9F5AA81C7A7}" src="https://github.com/user-attachments/assets/b4c743ca-c640-44da-afc1-2119559f3fa5" />
+<img width="589" height="559" alt="{76759216-B407-4335-867A-1538781CFA11}" src="https://github.com/user-attachments/assets/466f6447-1156-427b-a54b-d8cd8b93871a" />
+
+
+
 
 **Result:**
 ```
