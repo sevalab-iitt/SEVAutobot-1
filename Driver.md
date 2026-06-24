@@ -119,18 +119,26 @@ find ~/jetauto_ws/src/ -name "*.py" \
 find ~/jetauto_ws/src/ -name "*.py" \
   | xargs grep -l "servo\|HTD\|bus_servo\|MultiRawIdPosDur" 2>/dev/null
 ```
+ ## Verification:  
+ <img width="944" height="217" alt="image" src="https://github.com/user-attachments/assets/40502971-acf8-44db-ad2e-525e02c826fa" />
+
 
 ### IMU Driver
 ```bash
 find ~/jetauto_ws/src/ -name "*.py" \
   | xargs grep -l "Imu\|imu\|accelerometer" 2>/dev/null
 ```
+ ## Verification: 
+ <img width="957" height="239" alt="image" src="https://github.com/user-attachments/assets/7f34866a-96b7-406f-b3ef-e187ad18d9b4" />
 
+ 
 ### Depth Camera Driver
 ```bash
 find ~/jetauto_ws/src/ -name "*.py" \
   | xargs grep -l "depth\|PointCloud\|astra\|openni" 2>/dev/null
 ```
+ ## Verification:  
+ <img width="747" height="218" alt="image" src="https://github.com/user-attachments/assets/21dc7820-15ff-4eeb-b244-0fb7bff93035" />
 
 ---
 
@@ -314,5 +322,4 @@ After running Steps 4–7, fill in the actual paths from your robot:
 | Run auto-scanner | `python3 ~/jetauto_ws/src/scan_drivers.py` |
 | Copy report to laptop | `scp jetauto@IP:~/driver_report.txt ./` |
 
-> ⚠️ **Warning — Before running any command**
-> Always run `source ~/jetauto_ws/devel/setup.bash` in every new terminal, otherwise ROS commands will not be found.
+> 
