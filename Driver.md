@@ -149,16 +149,17 @@ Once you have the path from Step 4, read it:
 ```bash
 # Read full file
 cat ~/jetauto_ws/src/PACKAGE_NAME/scripts/DRIVER_FILE.py
+```
 ## verification:
 <img width="874" height="114" alt="image" src="https://github.com/user-attachments/assets/1f5f6fa8-a995-4a1c-8f9e-2d8f5af0b2ac" />
 
-
+```
 # Read with line numbers
 cat -n ~/jetauto_ws/src/PACKAGE_NAME/scripts/DRIVER_FILE.py
-
+```
 # Read only first 50 lines (see imports + node init)
 head -50 ~/jetauto_ws/src/PACKAGE_NAME/scripts/DRIVER_FILE.py
-
+```
 # Search for subscriber/publisher lines inside the file
 grep -n "Subscriber\|Publisher\|rospy.init" \
   ~/jetauto_ws/src/PACKAGE_NAME/scripts/DRIVER_FILE.py
