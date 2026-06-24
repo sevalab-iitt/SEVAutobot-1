@@ -1,6 +1,6 @@
 #  What is a Driver in ROS?
 In ROS, a driver is a Python or C++ node that:
-• Talks directly to a hardware device (camera, LiDAR, motors, servos)
+##### • Talks directly to a hardware device (camera, LiDAR, motors, servos)
 • Reads sensor data and publishes it to a ROS topic
 • Receives ROS commands and sends them to the hardware
 Every driver lives as a .py or .cpp file inside a ROS package under ~/jetauto_ws/src/.
