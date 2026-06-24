@@ -74,9 +74,11 @@ find ~/jetauto_ws/src/ -name "*.py" | sort
 # Count total
 find ~/jetauto_ws/src/ -name "*.py" | wc -l
 
-# ALL launch files (show how drivers are started)
+# ALL launch files ( it show how drivers are started)
 find ~/jetauto_ws/src/ -name "*.launch" | sort
 ```
+##Verification:
+<img width="624" height="137" alt="image" src="https://github.com/user-attachments/assets/8735d83e-b1f6-4378-a08c-36741a9d6278" />
 
 ---
 
