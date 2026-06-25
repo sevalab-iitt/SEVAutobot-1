@@ -60,7 +60,7 @@ flowchart TD
 
 ## 3. Inspecting the Bringup Launch File
 
-To document **exactly** what your robot's bringup launches (rather than the generic version above), run these on the robot:
+
 
 ```bash
 # Find the bringup launch file(s)
