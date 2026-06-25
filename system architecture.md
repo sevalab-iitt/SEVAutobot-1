@@ -67,13 +67,9 @@ Actual trace performed on the robot (`jetauto@jetauto-desktop`):
 cd ~/jetauto_ws/src
 ls
 ```
-**Output (real packages on this robot):**
-```
-jetauto_app          jetauto_driver        jetauto_multi         jetauto_simulations
-c_asr_offline        jetauto_example       jetauto_navigation    jetauto_slam
-jetauto_bringup      jetauto_calibration   jetauto_interfaces    jetauto_peripherals
-third_party
-```
+**Output:** 
+<img width="350" height="53" alt="image" src="https://github.com/user-attachments/assets/6b8d58a1-1302-4377-9268-0afe8d007309" />
+ 
 
 ### Step 2 — Enter the Bringup Package
 ```bash
@@ -81,9 +77,8 @@ cd jetauto_bringup
 ls
 ```
 **Output:**
-```
-CMakeLists.txt  launch  package.xml  scripts  service
-```
+ <img width="310" height="26" alt="image" src="https://github.com/user-attachments/assets/2b00d34e-11f1-46d7-9f50-3d5cf19e536e" />
+
 > The `service` folder is the giveaway — this package also manages a **systemd service**, not just a launch file. See Step 4.
 
 ### Step 3 — Enter the Launch Folder
@@ -92,9 +87,8 @@ cd launch
 ls
 ```
 **Output:**
-```
-bringup.launch  rosbridge.launch
-```
+ <img width="274" height="29" alt="image" src="https://github.com/user-attachments/assets/7a1ea97a-2607-4025-84ff-bac652982504" />
+
 
 ### Step 4 — Read bringup.launch
 ```bash
@@ -102,39 +96,13 @@ cat bringup.launch
 ```
 **Key contents found:**
 ```xml
-<?xml version="1.0"?>
-<!-- 此launch文件被设定为自启动，自启动文件路径：/etc/systemd/system/start_app_node.service
-     method: systemd
-     (This launch file is set as auto-start. The path of the auto-start file is
-     /etc/systemd/system/start_app_node.service, method: systemd) -->
+ <img width="358" height="250" alt="image" src="https://github.com/user-attachments/assets/0aaf1bed-362e-4510-8105-94eda364a880" />
+<img width="360" height="349" alt="image" src="https://github.com/user-attachments/assets/fa5a948f-1d62-449b-8734-ab05c8a604f5" />
 
-<launch>
-    <!-- 自定义usb摄像头名称 (custom usb camera name) -->
-    <arg name="usb_cam_name" default="usb_cam"/>
-
-    <!-- 自定义深度摄像头名称 (custom depth camera name) -->
-    <arg name="depth_camera_name" default="astra_cam"/>
-
-    <!-- 自定义深度摄像头rgb话题名称 (custom depth camera rgb topic name) -->
-    <arg name="image_topic" default="image_raw"/>
-
-    <!-- 获取设备类型，具体类型在~/.typerc里定义
-         (Acquire the device type. The specific type is defined in ~/.typerc) -->
-    <!-- ... file continues, paste the rest after running cat on your robot ... -->
-</launch>
-```
 
 > **Important finding:** `bringup.launch` is wired to **`start_app_node.service`** — a systemd service. This means bringup is normally started **automatically on boot**, not by manually running `roslaunch`. Manage it with:
 
-| Action | Command |
-|---|---|
-| Stop auto-start (until next reboot) | `sudo systemctl stop start_app_node.service` |
-| Start it now (until next reboot) | `sudo systemctl start start_app_node.service` |
-| Disable auto-start permanently | `sudo systemctl disable start_app_node.service` |
-| Enable auto-start permanently | `sudo systemctl enable start_app_node.service` |
-| Restart it | `sudo systemctl restart start_app_node.service` |
-| Check current status | `sudo systemctl status start_app_node.service` |
-
+ 
 ### Step 5 — See the Full Argument / Include List
 ```bash
 # View the rest of the file (it was cut off above)
