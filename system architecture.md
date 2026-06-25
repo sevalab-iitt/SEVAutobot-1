@@ -148,16 +148,14 @@ EOF
 
 ## 4. Typical Nodes Started by Bringup
 
-Fill this in once you've traced Section 3 on your actual robot:
-
 | Driver | Node Name | Launch File | Hardware Port |
-|---|---|---|---|
-| Camera | `_____` | `_____.launch` | `/dev/video__` |
-| LiDAR | `_____` | `_____.launch` | `/dev/ttyUSB__` |
-| IMU | `_____` | `_____.launch` | `/dev/ttyUSB__` / I2C |
-| Motor Control | `_____` | `_____.launch` | `/dev/ttyUSB__` |
-| Servo / Arm | `_____` | `_____.launch` | `/dev/ttyUSB__` |
-| Robot Description | `robot_state_publisher` | `_____.launch` | — |
+|--------|-----------|-------------|---------------|
+| Camera | `usb_cam` (from `$(arg usb_cam_name)`) | `jetauto_peripherals/launch/usb_cam.launch` | `/dev/usb_cam` |
+| LiDAR | `rplidarNode` | `jetauto_peripherals/launch/include/rplidar.launch` | `/dev/lidar` (mapped from `/dev/ttyUSB0` using udev rules) |
+| IMU | `imu` | `jetauto_peripherals/launch/imu.launch` | `I2C` |
+| Motor Control | `jetauto_controller` | `jetauto_driver/jetauto_controller/launch/jetauto_controller.launch` |  |
+| Servo / Arm | `hiwonder_servo_manager` | `jetauto_driver/hiwonder_servo/hiwonder_servo_controllers/launch/controller_manager.launch` | `/dev/ttyTHS1` |
+| Robot Description | `robot_state_publisher` | `jetauto_peripherals/launch/imu.launch` | — |
 
 ---
 
