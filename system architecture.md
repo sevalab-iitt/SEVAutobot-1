@@ -76,7 +76,7 @@ ls
 cd jetauto_bringup
 ls
 ```
-**Output:**
+  ## Output:
  <img width="310" height="26" alt="image" src="https://github.com/user-attachments/assets/2b00d34e-11f1-46d7-9f50-3d5cf19e536e" />
 
 > The `service` folder is the giveaway — this package also manages a **systemd service**, not just a launch file. See Step 4.
@@ -86,7 +86,7 @@ ls
 cd launch
 ls
 ```
-**Output:**
+  ## Output:
  <img width="274" height="29" alt="image" src="https://github.com/user-attachments/assets/7a1ea97a-2607-4025-84ff-bac652982504" />
 
 
@@ -94,8 +94,8 @@ ls
 ```bash
 cat bringup.launch
 ```
-**Key contents found:**
-```xml
+ ## Key contents found: 
+ 
  <img width="358" height="250" alt="image" src="https://github.com/user-attachments/assets/0aaf1bed-362e-4510-8105-94eda364a880" />
 <img width="360" height="349" alt="image" src="https://github.com/user-attachments/assets/fa5a948f-1d62-449b-8734-ab05c8a604f5" />
 
