@@ -1,3 +1,4 @@
+ 
 # JetAuto Pro — System Architecture  
 
 > Full boot-to-application software stack, and how to inspect what the `bringup` launch file actually starts.
@@ -57,33 +58,98 @@ flowchart TD
 | **9. Application Layer** | Higher-level packages (detection, tracking, nav, SLAM) subscribe to topics and publish commands | `roslaunch jetauto_app <app>.launch` |
 
 ---
-
 ## 3. Inspecting the Bringup Launch File
 
+Actual trace performed on the robot (`jetauto@jetauto-desktop`):
 
-
+### Step 1 — List All Packages in the Workspace
 ```bash
-# Find the bringup launch file(s)
-find ~/jetauto_ws/src/ -iname "*bringup*"
-
-# Most likely candidates on JetAuto Pro:
-find ~/jetauto_ws/src/ -iname "*.launch" | xargs grep -l "bringup\|jetauto_bringup" 2>/dev/null
-
-# Read the main bringup launch file once found
-cat ~/jetauto_ws/src/PACKAGE_NAME/launch/bringup.launch
-
-# See every <include> tag — these pull in the actual driver launch files
-grep -n "<include\|file=" ~/jetauto_ws/src/PACKAGE_NAME/launch/bringup.launch
-
-# Check if it's set to auto-run on boot (systemd service or rc.local)
-systemctl list-unit-files | grep -i jetauto
-cat /etc/rc.local 2>/dev/null
-ls /etc/systemd/system/ | grep -i jetauto
+cd ~/jetauto_ws/src
+ls
+```
+**Output (real packages on this robot):**
+```
+jetauto_app          jetauto_driver        jetauto_multi         jetauto_simulations
+c_asr_offline        jetauto_example       jetauto_navigation    jetauto_slam
+jetauto_bringup      jetauto_calibration   jetauto_interfaces    jetauto_peripherals
+third_party
 ```
 
-> **Note**
-> A `bringup.launch` file is usually just a **wrapper** — it doesn't contain driver code itself, it `<include>`s the individual driver launch files (camera.launch, lidar.launch, imu.launch, etc.). Trace each `<include>` to find the real driver being started.
+### Step 2 — Enter the Bringup Package
+```bash
+cd jetauto_bringup
+ls
+```
+**Output:**
+```
+CMakeLists.txt  launch  package.xml  scripts  service
+```
+> The `service` folder is the giveaway — this package also manages a **systemd service**, not just a launch file. See Step 4.
 
+### Step 3 — Enter the Launch Folder
+```bash
+cd launch
+ls
+```
+**Output:**
+```
+bringup.launch  rosbridge.launch
+```
+
+### Step 4 — Read bringup.launch
+```bash
+cat bringup.launch
+```
+**Key contents found:**
+```xml
+<?xml version="1.0"?>
+<!-- 此launch文件被设定为自启动，自启动文件路径：/etc/systemd/system/start_app_node.service
+     method: systemd
+     (This launch file is set as auto-start. The path of the auto-start file is
+     /etc/systemd/system/start_app_node.service, method: systemd) -->
+
+<launch>
+    <!-- 自定义usb摄像头名称 (custom usb camera name) -->
+    <arg name="usb_cam_name" default="usb_cam"/>
+
+    <!-- 自定义深度摄像头名称 (custom depth camera name) -->
+    <arg name="depth_camera_name" default="astra_cam"/>
+
+    <!-- 自定义深度摄像头rgb话题名称 (custom depth camera rgb topic name) -->
+    <arg name="image_topic" default="image_raw"/>
+
+    <!-- 获取设备类型，具体类型在~/.typerc里定义
+         (Acquire the device type. The specific type is defined in ~/.typerc) -->
+    <!-- ... file continues, paste the rest after running cat on your robot ... -->
+</launch>
+```
+
+> **Important finding:** `bringup.launch` is wired to **`start_app_node.service`** — a systemd service. This means bringup is normally started **automatically on boot**, not by manually running `roslaunch`. Manage it with:
+
+| Action | Command |
+|---|---|
+| Stop auto-start (until next reboot) | `sudo systemctl stop start_app_node.service` |
+| Start it now (until next reboot) | `sudo systemctl start start_app_node.service` |
+| Disable auto-start permanently | `sudo systemctl disable start_app_node.service` |
+| Enable auto-start permanently | `sudo systemctl enable start_app_node.service` |
+| Restart it | `sudo systemctl restart start_app_node.service` |
+| Check current status | `sudo systemctl status start_app_node.service` |
+
+### Step 5 — See the Full Argument / Include List
+```bash
+# View the rest of the file (it was cut off above)
+cat ~/jetauto_ws/src/jetauto_bringup/launch/bringup.launch | less
+
+# Pull out just the <arg> definitions (camera/device names, topics)
+grep -n "<arg name" ~/jetauto_ws/src/jetauto_bringup/launch/bringup.launch
+
+# Pull out every <include> — these are the real driver launch files being pulled in
+grep -n "<include\|file=" ~/jetauto_ws/src/jetauto_bringup/launch/bringup.launch
+
+# Also check the second launch file in this package
+cat ~/jetauto_ws/src/jetauto_bringup/launch/rosbridge.launch
+```
+ 
 ```bash
 # Recursively trace every included launch file from bringup
 python3 - <<'EOF'
