@@ -123,7 +123,7 @@ cat ~/jetauto_ws/src/jetauto_bringup/launch/rosbridge.launch
 python3 - <<'EOF'
 import re, os
 
-start = os.path.expanduser("~/jetauto_ws/src/PACKAGE_NAME/launch/bringup.launch")
+start = os.path.expanduser("~/jetauto_ws/src/jetauto_bringup/launch/bringup.launch")
 seen = set()
 
 def trace(path, depth=0):
