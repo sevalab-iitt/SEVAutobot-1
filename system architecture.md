@@ -141,6 +141,8 @@ def trace(path, depth=0):
 trace(start)
 EOF
 ```
+## Output:
+<img width="631" height="196" alt="image" src="https://github.com/user-attachments/assets/8811afe0-6ee3-4c0f-8fed-f4e2f6ab279c" />
 
 ---
 
