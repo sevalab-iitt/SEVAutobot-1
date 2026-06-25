@@ -67,7 +67,7 @@ Actual trace performed on the robot (`jetauto@jetauto-desktop`):
 cd ~/jetauto_ws/src
 ls
 ```
-**Output:** 
+ ## Output:
 <img width="350" height="53" alt="image" src="https://github.com/user-attachments/assets/6b8d58a1-1302-4377-9268-0afe8d007309" />
  
 
