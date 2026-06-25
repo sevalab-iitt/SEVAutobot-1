@@ -1,4 +1,4 @@
-# JetAuto Pro — System Architecture Documentation
+# JetAuto Pro — System Architecture  
 
 > Full boot-to-application software stack, and how to inspect what the `bringup` launch file actually starts.
 > **ROS Melodic** · Workspace: `~/jetauto_ws` · Jetson Nano
