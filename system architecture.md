@@ -162,12 +162,12 @@ EOF
 ## 5. Topics & Services After Bringup
 
 ```bash
-# Once bringup is running, list everything live
+# Once bringup is running,  to list everything live
 rostopic list
 rosservice list
 rosnode list
 
-# Check publish rate of a sensor topic (confirms driver is alive)
+# Check publish rate of a sensor topic ( to confirm  driver is alive)
 rostopic hz /scan
 rostopic hz /camera/rgb/image_raw
 rostopic hz /imu/data
@@ -186,7 +186,7 @@ rostopic hz /imu/data
 
 ## 6. Application Layer
 
-Everything above is infrastructure — the application layer is what you actually run on top of it:
+Everything above is infrastructure — the application layer is what we actually run on top of it:
 
 | Application | Subscribes To | Publishes To |
 |---|---|---|
