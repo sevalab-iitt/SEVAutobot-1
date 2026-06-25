@@ -168,5 +168,4 @@ roslaunch jetauto_navigation navigation.launch
 roslaunch jetauto_slam slam.launch
 ```
 
-> ⚠️ **Warning**
-> Bringup must be fully up (all driver topics publishing — verify with `rostopic hz`) **before** launching any application package, or nodes will fail silently waiting on topics that don't exist yet.
+ 
