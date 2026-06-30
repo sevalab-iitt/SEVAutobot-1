@@ -187,6 +187,15 @@ Planned additions include:
 
 # License
 
+# License
+
+This project is licensed under the **GNU Affero General Public License v3.0 (AGPL-3.0)**.
+
+You are free to use, modify, and distribute this project under the terms of the AGPL-3.0. Any modified versions made available over a network must also make their corresponding source code available under the same license.
+
+For the full license text, see the `LICENSE` file or visit the official GNU AGPL-3.0 license page.
+
+
 
 
 
