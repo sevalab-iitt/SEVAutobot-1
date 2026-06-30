@@ -2,127 +2,192 @@
 <img width="1200" height="1200" alt="image" src="https://sevalab-iitt.github.io/project%20equipments/ground%20robo.JPG" />
 
 
-# JetAuto Pro – Platform Overview
+# JetAuto Pro
+
+## Table of Contents
+
+* Platform Overview
+* Primary Objectives
+* Key Features
+* Hardware Components
+* Software Stack
+* Functional Capabilities
+* Typical Applications
+* Prerequisites
+* Quick Start
+* Repository Structure
+* Documentation
+* Future Enhancements
+* References
+* License
+
+---
+
+# Platform Overview
 
 ## Overview
 
-JetAuto Pro is an AI-powered autonomous mobile robot developed by Hiwonder for robotics education, research, and application development. It combines a mecanum-wheel mobile base, an NVIDIA Jetson embedded computer, a vision-guided robotic arm, LiDAR, and a 3D depth camera into a single platform capable of performing autonomous navigation, perception, manipulation, and human–robot interaction. The platform is designed around the Robot Operating System (ROS), enabling modular software development and seamless communication between sensors, actuators, and control nodes.
+JetAuto Pro is an AI-powered autonomous mobile robot developed by Hiwonder for robotics education, research, and application development. It integrates an NVIDIA Jetson embedded computer, mecanum-wheel chassis, robotic arm, LiDAR, and 3D depth camera into a unified ROS-based platform for developing intelligent robotic systems.
 
-The robot serves as a complete development platform for learning and implementing robotics concepts such as localization, mapping, path planning, computer vision, robotic manipulation, machine learning, and autonomous decision-making. Its open software architecture allows developers and researchers to customize existing ROS packages or integrate their own algorithms for advanced robotics applications.
+The platform enables users to explore autonomous navigation, robotic manipulation, computer vision, artificial intelligence, and embedded robotics through a modular and extensible software architecture.
+
+## Why JetAuto Pro?
+
+JetAuto Pro provides an integrated environment for learning, developing, and testing robotics applications without requiring extensive hardware integration. Its ROS ecosystem and rich sensor suite make it suitable for both educational and research purposes.
 
 ---
 
 # Primary Objectives
 
-* Develop and test autonomous robotic applications.
-* Learn ROS architecture, topics, services, actions, and node communication.
-* Perform SLAM (Simultaneous Localization and Mapping).
-* Implement autonomous navigation and obstacle avoidance.
-* Develop computer vision and AI-based perception systems.
-* Control a robotic manipulator for object detection, grasping, and sorting.
-* Integrate multiple sensors for real-time robotic decision making.
-* Provide an educational platform for robotics, AI, and embedded system development.
+* Develop autonomous robotic applications.
+* Learn and experiment with ROS concepts.
+* Perform SLAM and autonomous navigation.
+* Implement AI and computer vision algorithms.
+* Develop robotic manipulation and pick-and-place applications.
+* Integrate multiple sensors for intelligent decision-making.
+* Explore embedded AI and robotics research.
 
 ---
 
 # Key Features
 
-* Omnidirectional mecanum-wheel drive for smooth movement in all directions.
-* NVIDIA Jetson-based onboard computing for AI inference and robotics applications.
-* ROS-based modular software framework.
-* 2D LiDAR for mapping, localization, and navigation.
-* 3D depth camera for depth perception and object recognition.
-* Vision-guided robotic arm for autonomous manipulation tasks.
-* Real-time obstacle detection and avoidance.
-* Autonomous path planning and waypoint navigation.
-* Support for computer vision using OpenCV and deep learning frameworks.
-* Wireless remote operation through SSH, NoMachine, and game controller.
-* Expandable hardware and software architecture for research and development.
+* Omnidirectional mecanum-wheel mobility
+* NVIDIA Jetson-based AI computing
+* ROS-based modular software architecture
+* 2D LiDAR for mapping and navigation
+* 3D depth camera for perception
+* Vision-guided robotic arm
+* Autonomous navigation and obstacle avoidance
+* AI and computer vision support
+* Remote operation via SSH and NoMachine
+* Expandable hardware and software architecture
 
 ---
 
 # Hardware Components
 
-The JetAuto Pro integrates the following major hardware modules:
-
-| Component                       | Purpose                                                   |
-| ------------------------------- | --------------------------------------------------------- |
-| NVIDIA Jetson Embedded Computer | Executes ROS nodes, AI models, and application software   |
-| Mecanum Wheel Chassis           | Omnidirectional robot locomotion                          |
-| High-Precision Encoder Motors   | Closed-loop motion control and odometry                   |
-| 2D LiDAR                        | Environment scanning, SLAM, and navigation                |
-| 3D Depth Camera                 | Object detection, depth estimation, and vision processing |
-| Vision Robotic Arm              | Pick-and-place operations and object manipulation         |
-| Servo Controller                | Controls robotic arm joints                               |
-| IMU                             | Measures orientation and robot motion                     |
-| Battery System                  | Supplies power to the onboard components                  |
-| Wireless Communication          | Remote monitoring and robot control                       |
+| Component        | Purpose                        |
+| ---------------- | ------------------------------ |
+| NVIDIA Jetson    | AI computing and ROS execution |
+| Mecanum Chassis  | Omnidirectional movement       |
+| Encoder Motors   | Motion control and odometry    |
+| 2D LiDAR         | Mapping and localization       |
+| 3D Depth Camera  | Vision and depth perception    |
+| Robotic Arm      | Object manipulation            |
+| Servo Controller | Arm joint control              |
+| IMU              | Orientation and motion sensing |
+| Battery System   | Power supply                   |
+| Wireless Network | Remote communication           |
 
 ---
 
 # Software Stack
 
-The robot software ecosystem is primarily built upon ROS and consists of multiple interacting modules.
-
 * Ubuntu Linux
-* Robot Operating System (ROS)
-* Python and C++
+* ROS (Robot Operating System)
+* Python
+* C++
 * OpenCV
-* NVIDIA CUDA acceleration
+* CUDA
 * RViz
-* Gazebo (simulation)
-* MoveIt (robot arm planning)
-* SLAM and Navigation packages
-* Camera and LiDAR drivers
+* Gazebo
+* MoveIt
+* SLAM and Navigation Packages
 
 ---
 
 # Functional Capabilities
 
-JetAuto Pro supports a wide range of robotic functionalities, including:
-
 * Robot motion control
 * Odometry estimation
-* Sensor data acquisition
 * LiDAR mapping
 * Autonomous exploration
 * Localization
+* Path planning
 * Autonomous navigation
 * Obstacle avoidance
-* Path planning
-* Visual object detection
-* Color recognition
-* Gesture recognition
-* Face and human detection
+* Object detection
 * Robotic arm control
-* Autonomous object grasping
-* AI-based perception
+* Object grasping
 * Human–robot interaction
 * Remote robot operation
-* ROS-based distributed computing
 
 ---
 
 # Typical Applications
 
-JetAuto Pro can be used for:
-
 * Robotics education
-* Autonomous mobile robot research
-* SLAM algorithm development
-* Computer vision research
-* AI and deep learning experiments
-* Robot manipulation research
-* Warehouse automation simulation
-* Indoor autonomous navigation
-* Human–robot interaction studies
-* Embedded AI application development
-* ROS learning and experimentation
+* Autonomous navigation research
+* Computer vision applications
+* AI and deep learning development
+* SLAM research
+* Warehouse automation
+* Embedded AI experimentation
+* Human–robot interaction
 
 ---
 
-# Why JetAuto Pro?
+# Prerequisites
 
-JetAuto Pro combines mobility, perception, manipulation, and onboard AI computing into a single integrated robotic platform. Its modular ROS architecture, rich sensor suite, and support for modern robotics software make it suitable for both beginners learning robotics fundamentals and researchers developing advanced autonomous systems. The platform enables rapid prototyping, testing, and deployment of robotics algorithms without requiring extensive hardware integration, allowing users to focus on software development and system-level experimentation.
+Before operating the robot, ensure:
+
+* Battery is charged and connected.
+* LiDAR and camera are properly connected.
+* Robot is placed on a stable surface.
+* Robot and host computer are connected to the same network.
+* SSH access is available.
+* The ROS workspace (`jetauto_ws`) has been built successfully.
+
+---
+
+# Quick Start
+
+1. Power on the JetAuto Pro.
+2. Wait 30–60 seconds for Ubuntu and ROS services to initialize.
+3. Connect using SSH or NoMachine.
+4. Verify the ROS environment.
+5. Launch the required ROS packages or applications.
+
+For detailed setup and configuration instructions, refer to the **docs/** directory.
+
+---
+
+# Repository Structure
+
+
+---
+
+# Documentation
+
+
+
+---
+
+# Future Enhancements
+
+Planned additions include:
+
+* Complete ROS package documentation
+* TF frame hierarchy
+* Launch file reference
+* Sensor calibration guide
+* Performance benchmarking
+* Remote execution workflows
+* System diagnostics
+* Maintenance procedures
+* Developer contribution guide
+
+---
+
+# References
+
+
+
+---
+
+# License
+
+
+
 
 
