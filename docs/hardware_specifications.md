@@ -1,4 +1,4 @@
-# Hardware Specifications
+# Software Specifications
 
 ## System Information
 
