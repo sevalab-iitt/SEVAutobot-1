@@ -94,7 +94,7 @@ tree -L 3 -I '__pycache__|*.pyc|build|devel' ~/jetauto_ws/src
 ```
 
 **Screenshot:**
-> <img width="887" height="667" alt="{E2821147-01C1-43BA-B2B6-9B24187DA282}" src="https://github.com/user-attachments/assets/cac156b6-9163-4912-97f5-9476dac096b8" />
+> <img width="300" height="400" alt="{E2821147-01C1-43BA-B2B6-9B24187DA282}" src="https://github.com/user-attachments/assets/cac156b6-9163-4912-97f5-9476dac096b8" />
 <img width="531" height="544" alt="{47A3854F-98D0-4DCF-BD9F-E87EC16354FB}" src="https://github.com/user-attachments/assets/a9916ab4-e80c-44d5-ba7a-40065c849626" />
 <img width="555" height="476" alt="{0F13B211-745C-4435-BD7C-2EDE89482455}" src="https://github.com/user-attachments/assets/8f383f4f-daef-4cfb-b50b-de419fa98415" />
 <img width="583" height="564" alt="{4E9379A1-4FE9-47F2-A178-1C9F8A3A45C6}" src="https://github.com/user-attachments/assets/92f43c2a-7fb0-4e2b-9f70-31d5c4766420" />
