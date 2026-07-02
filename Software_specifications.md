@@ -50,7 +50,7 @@ Example information displayed:
 * Memory Usage
 * Hostname
 * Architecture
-<img width="500" height="200" alt="{FB2C0276-7C35-4B46-8BB0-360B57E9A852}" src="https://github.com/user-attachments/assets/19779d6b-9bd8-4504-80fc-88c559ba4de0" />
+<img width="700" height="300" alt="{FB2C0276-7C35-4B46-8BB0-360B57E9A852}" src="https://github.com/user-attachments/assets/19779d6b-9bd8-4504-80fc-88c559ba4de0" />
 
 ---
 
@@ -67,7 +67,7 @@ Example:
 ```text
 192.168.0.114
 ```
-<img width="485" height="110" alt="{84D6DC13-35C3-49A7-B32D-3A5905972F22}" src="https://github.com/user-attachments/assets/82074a02-1f26-4619-840b-34b820391715" />
+<img width="400" height="90" alt="{84D6DC13-35C3-49A7-B32D-3A5905972F22}" src="https://github.com/user-attachments/assets/82074a02-1f26-4619-840b-34b820391715" />
 
 ---
 
@@ -82,7 +82,7 @@ Example:
 ```text
 http://192.168.0.114:11311
 ```
-<img width="574" height="91" alt="{3F90C176-2185-42B5-BBA5-A457C869EC5B}" src="https://github.com/user-attachments/assets/3798383f-5044-4364-9605-75dffbacc9de" />
+<img width="400" height="90" alt="{3F90C176-2185-42B5-BBA5-A457C869EC5B}" src="https://github.com/user-attachments/assets/3798383f-5044-4364-9605-75dffbacc9de" />
 
 ---
 
@@ -98,7 +98,7 @@ Useful for checking:
 * USB Serial Devices
 * Additional Peripherals
 
-<img width="737" height="348" alt="{28EB027D-8A23-4D6A-B6C8-62D72DC30C3C}" src="https://github.com/user-attachments/assets/e9d601c5-cc71-43b1-bf15-eadc2f574052" />
+<img width="500" height="300" alt="{28EB027D-8A23-4D6A-B6C8-62D72DC30C3C}" src="https://github.com/user-attachments/assets/e9d601c5-cc71-43b1-bf15-eadc2f574052" />
 
 ---
 
@@ -109,5 +109,5 @@ rospack list
 ```
 
 Displays all installed ROS packages in the workspace.
-<img width="1140" height="804" alt="{04888900-312D-4D2F-8C33-805734AFB13D}" src="https://github.com/user-attachments/assets/2fa39fa4-cd46-4036-a7d1-af51e0305c51" />
+<img width="900" height="700" alt="{04888900-312D-4D2F-8C33-805734AFB13D}" src="https://github.com/user-attachments/assets/2fa39fa4-cd46-4036-a7d1-af51e0305c51" />
 
