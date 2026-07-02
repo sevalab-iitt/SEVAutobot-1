@@ -117,7 +117,7 @@ The ip address is first checked and accordingly put after @.
 Enter the password when prompted (`hiwonder` by default).
 
 
-**✅ Confirms:** You are now running commands directly on the robot, not on your laptop — this distinction matters for every subsequent chapter in this documentation.
+**Confirms:** You are now running commands directly on the robot, not on your laptop — this distinction matters for every subsequent chapter in this documentation.
 
 **If it fails:**
 - `Connection refused` / `No route to host` → robot isn't reachable at that IP; re-check Section 1.
