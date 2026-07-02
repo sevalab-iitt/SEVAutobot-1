@@ -16,7 +16,7 @@ find / -maxdepth 4 -iname "jetauto_ws" 2>/dev/null
 ```
 
 **Screenshot:**
-> <img width="880" height="49" alt="{C0C320AD-166E-4D7C-A383-C95973FE4476}" src="https://github.com/user-attachments/assets/5760cc24-6a36-4120-8747-f8aa6fea2d79" />
+> <img width="700" height="35" alt="{C0C320AD-166E-4D7C-A383-C95973FE4476}" src="https://github.com/user-attachments/assets/5760cc24-6a36-4120-8747-f8aa6fea2d79" />
 
 
 **Result (text form):**
@@ -36,7 +36,7 @@ tree -L 1 ~/jetauto_ws
 ```
 
 **Screenshot:**
-> <img width="601" height="204" alt="{00493946-3E08-4C28-9197-55475F3316DE}" src="https://github.com/user-attachments/assets/578f3f28-c16e-4a57-b0cd-4ca0d6dfe3ce" />
+> <img width="500" height="150" alt="{00493946-3E08-4C28-9197-55475F3316DE}" src="https://github.com/user-attachments/assets/578f3f28-c16e-4a57-b0cd-4ca0d6dfe3ce" />
 
 
 **Result:**
@@ -61,7 +61,7 @@ ls ~/jetauto_ws/src
 ```
 
 **Screenshot:**
-> <img width="1167" height="97" alt="{09B8FE02-5EEA-48E8-904B-FC215E3785A1}" src="https://github.com/user-attachments/assets/1fbcdfa3-cca5-40b9-a0cc-c42f924c3636" />
+> <img width="900" height="80" alt="{09B8FE02-5EEA-48E8-904B-FC215E3785A1}" src="https://github.com/user-attachments/assets/1fbcdfa3-cca5-40b9-a0cc-c42f924c3636" />
 
 
 **Result:**
@@ -147,7 +147,7 @@ tree -L 2 ~/jetauto_ws/src/jetauto_bringup
 
 ### `jetauto_bringup`
 **Screenshot:**
-> <img width="785" height="596" alt="{62F4E9DA-1224-41C5-8797-CD9C01987C7B}" src="https://github.com/user-attachments/assets/9b53364e-900e-4536-872a-fa3a39308c9b" />
+> <img width="500" height="400" alt="{62F4E9DA-1224-41C5-8797-CD9C01987C7B}" src="https://github.com/user-attachments/assets/9b53364e-900e-4536-872a-fa3a39308c9b" />
 
 
 **Result:**
@@ -221,5 +221,5 @@ sudo apt install tree
 ```
 **Screenshot:**
 
-<img width="700" height="86" alt="{72AA3100-0C68-40B8-9EDF-B512E10ACF3E}" src="https://github.com/user-attachments/assets/d88c929f-ffcd-4e89-b461-80644ef55414" />
+<img width="500" height="80" alt="{72AA3100-0C68-40B8-9EDF-B512E10ACF3E}" src="https://github.com/user-attachments/assets/d88c929f-ffcd-4e89-b461-80644ef55414" />
 
