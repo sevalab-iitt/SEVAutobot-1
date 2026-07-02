@@ -264,4 +264,3 @@ nmcli device status
 
 ---
 
-**⬅️ Previous:** [ROS1 Architecture](./08-ROS1-Architecture.md) &nbsp;&nbsp;|&nbsp;&nbsp; **➡️ Next:** [Sensor Verification Commands](./10-Sensor-Verification.md)
