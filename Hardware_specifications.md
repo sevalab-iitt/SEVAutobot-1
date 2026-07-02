@@ -1,10 +1,10 @@
-# 🔧 Hardware Specifications
+# Hardware Specifications
 
 > Complete hardware reference for the **Hiwonder JetAuto Pro** — compute module, sensors, chassis, arm, and power system. Use this page to look up exact specs before writing or debugging code for any subsystem.
 
 ---
 
-## 📑 Table of Contents
+## Table of Contents
 
 - [System Identity](#-system-identity)
 - [1. Compute Module — NVIDIA Jetson Nano](#1-compute-module--nvidia-jetson-nano)
@@ -17,11 +17,11 @@
 - [5. Robotic Arm](#5-robotic-arm)
 - [6. Control Electronics — Expansion Board](#6-control-electronics--expansion-board)
 - [7. Power System](#7-power-system)
-- [📋 Quick-Reference Summary Table](#-quick-reference-summary-table)
+- [Quick-Reference Summary Table](#-quick-reference-summary-table)
 
 ---
 
-## 🆔 System Identity
+## System Identity
 
 | Item | Value |
 |---|---|
@@ -31,12 +31,12 @@
 | ROS version | ROS1 Melodic Morenia |
 | System username | `jetauto` |
 | Home directory | `/home/jetauto` |
-| ROS workspace | `~/jetauto_ws` ⚠️ *(not `catkin_ws`, despite what generic tutorials assume)* |
+| ROS workspace | `~/jetauto_ws` *(not `catkin_ws`, despite what generic tutorials assume)* |
 | Hostname | `jetauto-desktop` |
 | Robot IP address | `192.168.0.114` |
 | `ROS_MASTER_URI` | `http://192.168.0.114:11311` |
 
-> ⚠️ **Note:** This is a Jetson Nano (ROS1) build. If your unit is actually the **Jetson Orin Nano running ROS2**, the compute specs and low-level interfaces below will differ — confirm with `uname -a` and `rosversion -d` first.
+> **Note:** This is a Jetson Nano (ROS1) build. If your unit is actually the **Jetson Orin Nano running ROS2**, the compute specs and low-level interfaces below will differ — confirm with `uname -a` and `rosversion -d` first.
 
 ---
 
@@ -59,7 +59,7 @@
 | Low-level I/O | 40-pin header — GPIO, I2C, I2S, SPI, UART |
 | Carrier board size | 100 mm × 80 mm × 29 mm |
 
-**💡 Why it matters:** With only 128 CUDA cores and 4 GB shared RAM, this board favors lightweight detection models (MobileNet-SSD, YOLOv3/v4-tiny) converted with **TensorRT** rather than large, unoptimized networks.
+**Why it matters:** With only 128 CUDA cores and 4 GB shared RAM, this board favors lightweight detection models (MobileNet-SSD, YOLOv3/v4-tiny) converted with **TensorRT** rather than large, unoptimized networks.
 
 ---
 
@@ -85,7 +85,7 @@ JetAuto Pro ships with **one of two interchangeable LIDAR units** — check whic
 
 **ROS integration:** Package `rplidar_ros` → topic `/scan` → message type `sensor_msgs/LaserScan`.
 
-**⚠️ Caveat:** Degrades on highly reflective, transparent, or very dark matte surfaces; can saturate in strong direct sunlight.
+**Caveat:** Degrades on highly reflective, transparent, or very dark matte surfaces; can saturate in strong direct sunlight.
 
 ### 2.2 EAI / YDLiDAR G4
 
@@ -108,7 +108,7 @@ JetAuto Pro ships with **one of two interchangeable LIDAR units** — check whic
 
 **ROS integration:** Typically driven by the `ydlidar_ros` / `ydlidar_ros2_driver` package → topic `/scan` → `sensor_msgs/LaserScan` (same message type as the A1, so downstream nodes don't need to change).
 
-**⚠️ Caveat:** Longer range and higher sample rate than the A1, but also higher startup current draw (~1 A) — worth accounting for in power budgeting if running alongside a GPU-heavy detection node.
+**Caveat:** Longer range and higher sample rate than the A1, but also higher startup current draw (~1 A) — worth accounting for in power budgeting if running alongside a GPU-heavy detection node.
 
 ### 2.3 A1 vs G4 — Quick Comparison
 
@@ -142,7 +142,7 @@ JetAuto Pro ships with **one of two interchangeable LIDAR units** — check whic
 
 **ROS integration:** Package `astra_camera` → `/camera/rgb/image_raw`, `/camera/depth/image_raw`, `/camera/depth_registered/points`.
 
-**💡 Practical constraints:**
+**Practical constraints:**
 - Running RGB (1280×960) + depth (640×480) simultaneously at 30 fps approaches the **USB 2.0 480 Mbps ceiling**.
 - RGB and depth sensors have different fields of view — needs calibration-based alignment, not naive pixel matching.
 - Objects **closer than 0.6 m** won't produce reliable depth data.
@@ -158,7 +158,7 @@ JetAuto Pro ships with **one of two interchangeable LIDAR units** — check whic
 | Suspension | Pendulum-style, keeps all wheels evenly loaded |
 | Motion modes | Forward/backward, strafe, diagonal, in-place rotation, and combinations |
 
-**💡 Why mecanum wheels matter:** True omnidirectional motion — the robot can strafe sideways without turning — but this requires mecanum-specific inverse kinematics rather than simple left/right wheel-speed math.
+**Why mecanum wheels matter:** True omnidirectional motion — the robot can strafe sideways without turning — but this requires mecanum-specific inverse kinematics rather than simple left/right wheel-speed math.
 
 ---
 
@@ -170,7 +170,7 @@ JetAuto Pro ships with **one of two interchangeable LIDAR units** — check whic
 | End-effector | Gripper with its own dedicated close-range camera |
 | Control | Serial bus servos, each with its own addressable ID |
 
-**💡 Why 6 DOF matters:** 3 DOF position the gripper anywhere in 3D space; the other 3 DOF orient it at any angle — together they let the arm approach an object from an arbitrary angle, not just straight-on.
+**Why 6 DOF matters:** 3 DOF position the gripper anywhere in 3D space; the other 3 DOF orient it at any angle — together they let the arm approach an object from an arbitrary angle, not just straight-on.
 
 ---
 
@@ -186,7 +186,7 @@ JetAuto Pro ships with **one of two interchangeable LIDAR units** — check whic
 | Extras | 2 physical buttons, 1 LED, 1 buzzer |
 | Link to Jetson | Simple serial connection (wrapped into ROS messages/services by a driver node) |
 
-**💡 Why two controllers:** Linux on the Jetson can't guarantee microsecond-level timing (its scheduler can always be interrupted). A dedicated microcontroller running nothing else can — critical for smooth motor PWM and accurate encoder counting.
+**Why two controllers:** Linux on the Jetson can't guarantee microsecond-level timing (its scheduler can always be interrupted). A dedicated microcontroller running nothing else can — critical for smooth motor PWM and accurate encoder counting.
 
 ---
 
@@ -198,11 +198,11 @@ JetAuto Pro ships with **one of two interchangeable LIDAR units** — check whic
 | Capacity | ≈66.6 Wh (11.1 V × 6 Ah) |
 | Distribution | Regulator stage → steady 5 V to Jetson (via barrel jack); motors/servo bus powered separately at their own voltages |
 
-**⚠️ Caution:** Sustained GPU-heavy workloads (e.g., continuous object detection) draw more current, shortening runtime and raising chip temperature. Monitor with `tegrastats` during long test sessions.
+**Caution:** Sustained GPU-heavy workloads (e.g., continuous object detection) draw more current, shortening runtime and raising chip temperature. Monitor with `tegrastats` during long test sessions.
 
 ---
 
-## 📋 Quick-Reference Summary Table
+## Quick-Reference Summary Table
 
 | Subsystem | Key Specification |
 |---|---|
