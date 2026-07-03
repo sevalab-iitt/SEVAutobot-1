@@ -47,7 +47,7 @@ to:
 
 This is a **permanent fix** — it edits the launch file on disk, not a runtime argument, so it persists across reboots and future `roslaunch` calls. No rebuild needed since it's an XML param, not compiled code.
 
-> ⚠️ Note: `angle_compensate` is hardcoded via `<param>` with no `<arg>` wrapper in this file, so passing `angle_compensate:=false` on the command line does **nothing** — the XML must be edited directly.
+> 
 
 ### Applying the fix safely
 
@@ -276,7 +276,7 @@ cd ~
 pcl_concatenate_points_pcd *.pcd
 pcl_viewer output.pcd
 ```
-> ⚠️ If the lidar was stationary while capturing, this just overlays hundreds of nearly identical scans — it does **not** build a larger map. A real expanded map requires moving the robot and combining scans with odometry/pose data (SLAM), not simple concatenation.
+ 
 
 **Keep only the first N files, delete the rest:**
 ```bash
