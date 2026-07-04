@@ -1,4 +1,4 @@
-#  RPLIDAR — Complete Setup, Autostart, and Feed Access Guide
+#  RPLIDAR
  
 ---
 
