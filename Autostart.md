@@ -1,4 +1,4 @@
-# JetAuto — Auto-Starting ALL ROS Nodes on Boot
+#  Auto-Starting ALL ROS Nodes on Boot
 
 **Goal:** Make every JetAuto ROS node (lidar, cameras, controller, servos, app communication, joystick, etc.) come up automatically on boot, without manually running any `roslaunch` command.
 
@@ -68,7 +68,7 @@ StandardError=null
 WantedBy=multi-user.target
 ```
 
-> ⚠️ **Important:** `StandardOutput=null` / `StandardError=null` means crashes are **silent** in `systemctl status`. Always check real errors with:
+>  **Important:** `StandardOutput=null` / `StandardError=null` means crashes are **silent** in `systemctl status`. Always check real errors with:
 > ```bash
 > journalctl -u start_app_node.service --no-pager | tail -100
 > ```
