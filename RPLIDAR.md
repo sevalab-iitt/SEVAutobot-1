@@ -1,14 +1,10 @@
-# RPLIDAR (JetAuto) — Crash Fix, Scan Feed, and Point Cloud Workflow
-
-**Platform:** JetAuto (Jetson-based), ROS Melodic
-**Lidar:** RPLIDAR (CH340 USB-serial bridge), S/N `D9ACED95C4E493CAA5E69EF0487C4B6E`, Firmware 1.29, Hardware Rev 7
-**Serial baud rate:** 115200
-
+#  RPLIDAR — Complete Setup, Autostart, and Feed Access Guide
+ 
 ---
 
-## 1. The Problem
+## Part 1 — The Crash Bug (`*** buffer overflow detected ***`)
 
-Running:
+### Symptom
 ```bash
 roslaunch rplidar_ros rplidar.launch
 ```
@@ -18,21 +14,18 @@ caused an infinite crash-restart loop:
 [rplidarNode-1] process has died [pid ..., exit code -6, ...]
 [rplidarNode-1] restarting process
 ```
-The node crashed immediately after printing `SDK Version:2.0.0`, before it could publish any `/scan` data. `respawn="true"` in the launch file caused it to restart endlessly, flooding the terminal.
+Crashed immediately after printing `SDK Version:2.0.0`, before publishing any `/scan` data. `respawn="true"` in the launch file caused endless restarts, flooding the terminal.
 
 ### Root Cause
+`*** buffer overflow detected ***` is glibc's stack-protector (`fortify_source`) catching a stack-smashing bug in the compiled `rplidarNode` binary, triggered specifically by `angle_compensate`:
 
-`*** buffer overflow detected ***` is glibc's stack-protector (`fortify_source`) catching a stack-smashing bug inside the `rplidarNode` binary. It was triggered by the `angle_compensate` feature:
-
-- The lidar auto-selected a **high-sample-rate scan mode** ("Sensitivity", 8 kHz).
+- Lidar auto-selected a **high-sample-rate scan mode** ("Sensitivity", 8 kHz).
 - `angle_compensate` in `rplidar_ros` uses a **fixed-size stack buffer** to build the angle-compensated scan.
 - At 8 kHz sample rate, more samples per revolution are produced than that buffer was sized for → stack overflow → glibc aborts the process (`SIGABRT`, exit code `-6`).
 
-Confirmed by running the node directly with `rosrun` (bypassing the launch file's `angle_compensate=true` param) — it started cleanly with no crash, proving the hardware/serial connection was fine and the bug was software-side.
+**Confirmed by:** running the node directly via `rosrun rplidar_ros rplidarNode` (bypassing the launch file's `angle_compensate=true` param) — it started cleanly, no crash. This proved the hardware/serial connection was fine and the bug was purely software-side.
 
----
-
-## 2. The Fix
+### The Fix
 
 **File:** `~/jetauto_ws/src/third_party/rplidar_ros/launch/rplidar.launch`
 
@@ -45,12 +38,9 @@ to:
 <param name="angle_compensate" type="bool" value="false"/>
 ```
 
-This is a **permanent fix** — it edits the launch file on disk, not a runtime argument, so it persists across reboots and future `roslaunch` calls. No rebuild needed since it's an XML param, not compiled code.
+> Note: `angle_compensate` is hardcoded via `<param>` with no `<arg>` wrapper, so passing `angle_compensate:=false` on the command line does **nothing**. The XML must be edited directly.
 
-> 
-
-### Applying the fix safely
-
+**Commands used:**
 ```bash
 # Backup first
 cp ~/jetauto_ws/src/third_party/rplidar_ros/launch/rplidar.launch \
@@ -65,16 +55,7 @@ diff ~/jetauto_ws/src/third_party/rplidar_ros/launch/rplidar.launch.bak \
      ~/jetauto_ws/src/third_party/rplidar_ros/launch/rplidar.launch
 ```
 
-### Cleaning up stuck/duplicate processes (do this before every relaunch during debugging)
-
-```bash
-pkill -9 -f rplidarNode
-pkill -9 -f roslaunch
-ps aux | grep -i rplidar   # should return nothing relevant
-```
-
 ### Final working launch file
-
 ```xml
 <launch>
   <node
@@ -95,11 +76,11 @@ ps aux | grep -i rplidar   # should return nothing relevant
 </launch>
 ```
 
-**Verify the fix:** relaunch and check the SUMMARY block prints `angle_compensate: False`, and no `*** buffer overflow detected ***` appears.
+**Verify:** relaunch and confirm the SUMMARY block prints `angle_compensate: False`, with no `*** buffer overflow detected ***`.
 
 ---
 
-## 3. Understanding the `/scan` Topic
+## Part 2 — Understanding the `/scan` Topic
 
 Message type: `sensor_msgs/LaserScan`
 
@@ -126,54 +107,17 @@ angle = angle_min + i * angle_increment
 ```
 Invalid readings (`0.0`, `inf`, `nan`) should be filtered before use.
 
-### Useful commands
-
-```bash
-rostopic echo /scan -n 1     # print one full scan message
-rostopic echo /scan          # continuous stream
-rostopic hz /scan             # confirm publish rate (~10 Hz)
-```
-
-### Visualize in RViz
-
-```bash
-rosrun rviz rviz
-```
-- Set **Fixed Frame** → `laser`
-- **Add** → **By topic** → `/scan` → **LaserScan**
-
-### Minimal Python subscriber example
-
-```python
-#!/usr/bin/env python
-import rospy
-from sensor_msgs.msg import LaserScan
-
-def callback(scan_msg):
-    ranges = scan_msg.ranges
-    closest = min(r for r in ranges if r > 0.0)
-    rospy.loginfo("Closest obstacle: %.2f m" % closest)
-
-rospy.init_node('lidar_listener')
-rospy.Subscriber('/scan', LaserScan, callback)
-rospy.spin()
-```
-
 ---
 
-## 4. Converting LaserScan → PointCloud2
+## Part 3 — Point Cloud Conversion & Saving
 
+### Convert LaserScan → PointCloud2
 Requires `laser_geometry`:
 ```bash
 sudo apt install ros-melodic-laser-geometry
-python -c "import laser_geometry"   # verify it's importable
 ```
 
-**Create the converter script** (use `nano`, don't paste into bash directly):
-```bash
-nano ~/scan_to_cloud.py
-```
-Paste:
+Create `~/scan_to_cloud.py` (via `nano`, not pasted into bash directly):
 ```python
 #!/usr/bin/env python
 import rospy
@@ -191,132 +135,270 @@ rospy.init_node('scan_to_cloud')
 rospy.Subscriber('/scan', LaserScan, callback)
 rospy.spin()
 ```
-Save (`Ctrl+O`, `Enter`), exit (`Ctrl+X`), then:
 ```bash
 chmod +x ~/scan_to_cloud.py
 python ~/scan_to_cloud.py
 ```
-Confirm it's publishing:
-```bash
-rostopic echo /cloud -n 1
-```
 
----
-
-## 5. Saving Point Cloud Data to `.pcd` Files
-
+### Save to `.pcd` files
 ```bash
 sudo apt install ros-melodic-pcl-ros
 rosrun pcl_ros pointcloud_to_pcd input:=/cloud
 ```
-This writes one timestamped `.pcd` file per received message (e.g. `1782994466046738.pcd`) into the current directory. **Press `Ctrl+C` once you have enough** — otherwise it keeps writing a new file roughly every scan cycle (this is why hundreds of near-identical files can accumulate quickly).
+Writes one timestamped `.pcd` file per message received (e.g. `1782994466046738.pcd`) into the current directory. **Ctrl+C once you have enough** — it writes a new file almost every scan cycle.
 
-### Alternative: record raw data instead (for later conversion/replay)
+### Inspect saved files
 ```bash
-rosbag record /scan
+ls -lh *.pcd
+ls *.pcd | wc -l
+head -15 <file>.pcd     # view text header, confirms valid data
 ```
 
----
-
-## 6. Finding and Inspecting Saved `.pcd` Files
-
-```bash
-ls -lh *.pcd                 # list files in current dir
-ls *.pcd | wc -l              # count them
-head -15 <file>.pcd           # view the text header (confirms valid data)
-```
-
-Typical header:
-```
-# .PCD v0.7 - Point Cloud Data file format
-VERSION 0.7
-FIELDS x y z
-SIZE 4 4 4
-TYPE F F F
-COUNT 1 1 1
-WIDTH ...
-HEIGHT 1
-POINTS ...
-DATA ascii
-```
-
----
-
-## 7. Viewing `.pcd` Files
-
-### Requires a display (local monitor or `ssh -X`)
-
-Install:
+### View `.pcd` files (needs a display, or `ssh -X`)
 ```bash
 sudo apt install pcl-tools
-```
-
-**View a single file:**
-```bash
 pcl_viewer <file>.pcd
 ```
-Left-click drag = rotate, scroll = zoom, `r` = reset view.
-
-**Republish a saved file back into ROS / RViz:**
+Or republish into ROS/RViz:
 ```bash
 rosrun pcl_ros pcd_to_pointcloud <file>.pcd 0.1
 ```
-Then in RViz: **Add** → **By topic** → `/cloud_pcd` → **PointCloud2**.
 
-### No display available (headless/SSH without X forwarding)
-Use `head -15 <file>.pcd` to confirm valid point data as text, or copy the file to a desktop machine and open it in **CloudCompare**.
-
----
-
-## 8. Working with Multiple `.pcd` Files
-
-**Merge all files into one combined cloud:**
+### Merge multiple files into one cloud
 ```bash
-cd ~
 pcl_concatenate_points_pcd *.pcd
 pcl_viewer output.pcd
 ```
- 
+>   If the lidar was stationary, this just overlays near-identical scans — it does not build a bigger map. Real map-building needs the robot to move + odometry data (SLAM).
 
-**Keep only the first N files, delete the rest:**
+### Cleanup extra files
 ```bash
-cd ~
 ls *.pcd | sort | tail -n +6 | xargs rm   # keeps first 5, deletes rest
-```
-
-**Quick sequential preview (needs display):**
-```bash
-for f in *.pcd; do
-  echo "Showing $f"
-  timeout 1 pcl_viewer "$f"
-done
 ```
 
 ---
 
-## Quick Reference — Full Session Command Order
+## Part 4 — Autostart on Boot (systemd)
+
+### Discovery: JetAuto already has an autostart mechanism
+```bash
+systemctl list-units --type=service --all | grep -i ros
+# roscore.service — always running
+
+find ~/jetauto_ws -iname "*.service"
+# jupyter.service, start_app_node.service, clear_log.service,
+# fan_control.service, expand_rootfs.service, voltage_detect.service
+```
+
+`start_app_node.service` is JetAuto's official master autostart entry point:
+```ini
+[Unit]
+Description=start node
+After=NetworkManager.service time-sync.target
+[Service]
+Type=simple
+User=jetauto
+Restart=always
+RestartSec=30
+KillMode=mixed
+ExecStart=/home/jetauto/jetauto_ws/src/jetauto_bringup/scripts/source_env.bash roslaunch jetauto_bringup bringup.launch
+StandardOutput=null
+StandardError=null
+[Install]
+WantedBy=multi-user.target
+```
+>   `StandardOutput=null` / `StandardError=null` means crashes are **silent** in `systemctl status` — use `journalctl -u start_app_node.service` to see real errors.
+
+### Managing this service
+```bash
+sudo systemctl status start_app_node.service     # check state
+sudo systemctl is-enabled start_app_node.service # confirm boot-persistence
+sudo systemctl enable start_app_node.service      # enable permanently
+sudo systemctl start start_app_node.service       # start now
+sudo systemctl stop start_app_node.service        # stop now (temporary)
+sudo systemctl disable start_app_node.service     # disable permanently
+sudo systemctl restart start_app_node.service     # restart
+journalctl -u start_app_node.service --no-pager | tail -100   # view real logs
+```
+
+### Problem found: lidar was missing from bringup.launch
+`bringup.launch` (`~/jetauto_ws/src/jetauto_bringup/launch/bringup.launch`) brings up the chassis controller, servos, cameras, app communication (`rosbridge`), and joystick — but had **no include for `rplidar_ros`**. This is why `/rplidarNode` never appeared in `rosnode list`, even though `/lidar_app` (a higher-level app-control node) was running and waiting for `/scan` data that never came.
+
+### The fix: add lidar include to bringup.launch
+
+Backup first:
+```bash
+cp ~/jetauto_ws/src/jetauto_bringup/launch/bringup.launch \
+   ~/jetauto_ws/src/jetauto_bringup/launch/bringup.launch.bak
+```
+
+Edit `~/jetauto_ws/src/jetauto_bringup/launch/bringup.launch` and add, near the chassis/servo includes:
+```xml
+<!--激光雷达驱动(lidar driver)-->
+<include file="$(find rplidar_ros)/launch/rplidar.launch"/>
+```
+
+Restart the service to apply:
+```bash
+sudo systemctl restart start_app_node.service
+sleep 8
+rosnode list | grep -i rplidar
+rostopic list | grep -i scan
+```
+
+Since this include points to the same `rplidar.launch` fixed in Part 1 (`angle_compensate=false`), the crash fix automatically carries over.
+
+**Full reboot test (final proof):**
+```bash
+sudo reboot
+# after reboot:
+rosnode list | grep -i rplidar
+```
+
+---
+
+## Part 5 — Duplicate Process Conflict ("no new messages")
+
+### Symptom
+```bash
+rostopic echo /scan
+subscribed to [/scan]
+no new messages
+no new messages
+...
+```
+`/scan` topic existed (registered), but nothing was actually publishing to it.
+
+### Root cause
+**Two separate `roslaunch rplidar_ros rplidar.launch` processes were running simultaneously** — one from the systemd bringup service (after adding the include), and a leftover manual one from earlier testing that was never fully killed. Both fought over the same `/dev/ttyUSB0` serial port. Symptoms in `ps aux`:
+```
+roslaunch rplidar_ros rplidar.launch     (older PID)
+roslaunch rplidar_ros rplidar.launch     (newer PID)
+[rplidarNode] <defunct>                   ← zombie process
+rplidarNode-1.log  / rplidarNode-2.log    ← two competing node instances
+```
+This also caused `start_app_node.service` to exit with `code=1/FAILURE` in the journal, due to "new node registered with same name" conflicts cascading through bringup.
+
+### The fix
+```bash
+# 1. Stop the service so it stops respawning during cleanup
+sudo systemctl stop start_app_node.service
+
+# 2. Kill every lidar-related process, including zombie parents
+pkill -9 -f rplidarNode
+pkill -9 -f "roslaunch rplidar_ros"
+ps aux | grep -i rplidar        # confirm clean (only the grep line itself)
+
+# 3. Check no manual terminal is still running roslaunch (Ctrl+C any that are)
+
+# 4. Restart the bringup service fresh
+sudo systemctl start start_app_node.service
+sleep 8
+
+# 5. Confirm single clean process + real data
+ps aux | grep -i rplidar        # should show exactly ONE rplidarNode
+rosnode list | grep rplidar
+rostopic hz /scan                # should show steady ~10 Hz
+```
+
+**Lesson:** always fully kill old manual test sessions (`pkill -9 -f rplidarNode; pkill -9 -f roslaunch`) before restarting the systemd service, to avoid two instances racing for the same serial port.
+
+---
+
+## Part 6 — Accessing the Live Feed (Terminal Only, No Code)
+
+Once `rostopic hz /scan` shows a steady rate, use any of these — no scripting required:
 
 ```bash
-# 1. One-time fix
-cp ~/jetauto_ws/src/third_party/rplidar_ros/launch/rplidar.launch \
-   ~/jetauto_ws/src/third_party/rplidar_ros/launch/rplidar.launch.bak
-sed -i 's/name="angle_compensate" type="bool" value="true"/name="angle_compensate" type="bool" value="false"/' \
-  ~/jetauto_ws/src/third_party/rplidar_ros/launch/rplidar.launch
+# 1. See raw data scrolling live
+rostopic echo /scan
 
-# 2. Clean processes, then launch
-pkill -9 -f rplidarNode; pkill -9 -f roslaunch
-roslaunch rplidar_ros rplidar.launch
-
-# 3. (new terminal) Check scan data
+# 2. See one snapshot only
 rostopic echo /scan -n 1
 
-# 4. Convert to point cloud
-python ~/scan_to_cloud.py &
+# 3. Check it's alive + publish rate
+rostopic hz /scan
 
-# 5. (another terminal) Save to .pcd
+# 4. See topic info (type, publishers, subscribers) without the data
+rostopic info /scan
+
+# 5. See it visually (most useful — an actual live picture)
+rosrun rviz rviz
+# then in RViz: Fixed Frame -> "laser", Add -> By topic -> /scan -> LaserScan
+```
+
+### When you'd need code instead
+The `lidar_listener.py` style script (subscribing in Python) is only needed if you want the robot to **act** on the data automatically — e.g. stop before hitting a wall, trigger an alert, log to a file continuously. For just watching/checking the feed, the terminal commands above are sufficient.
+
+```python
+#!/usr/bin/env python
+import rospy
+from sensor_msgs.msg import LaserScan
+
+def callback(scan_msg):
+    ranges = scan_msg.ranges
+    valid = [r for r in ranges if r > 0.0]
+    if valid:
+        rospy.loginfo("Closest obstacle: %.2f m" % min(valid))
+
+rospy.init_node('lidar_listener')
+rospy.Subscriber('/scan', LaserScan, callback)
+rospy.spin()
+```
+| Line | Purpose |
+|---|---|
+| `#!/usr/bin/env python` | Lets the file run directly (`./script.py`) with the right interpreter |
+| `import rospy` | ROS's Python client library — talks to ROS |
+| `from sensor_msgs.msg import LaserScan` | Import the message type so Python understands the data structure |
+| `def callback(...)` | Function ROS calls automatically on every new `/scan` message |
+| `scan_msg.ranges` | Pulls out the distance array from that message |
+| `[r for r in ranges if r > 0.0]` | Filters out invalid readings (`0.0`/`inf`/`nan`) |
+| `rospy.loginfo(...)` | ROS's version of `print`, tagged with node name/timestamp |
+| `rospy.init_node(...)` | Registers this script as a real ROS node |
+| `rospy.Subscriber(...)` | Sets up the actual subscription + callback binding |
+| `rospy.spin()` | Keeps the script alive listening forever (Ctrl+C to stop) — without it, the script exits instantly and never receives anything |
+
+---
+
+## Quick Reference — Everything in Order
+
+```bash
+# === ONE-TIME FIXES (already applied) ===
+
+# Fix 1: disable angle_compensate to stop the buffer overflow crash
+cp ~/jetauto_ws/src/third_party/rplidar_ros/launch/rplidar.launch{,.bak}
+sed -i 's/angle_compensate" type="bool" value="true"/angle_compensate" type="bool" value="false"/' \
+  ~/jetauto_ws/src/third_party/rplidar_ros/launch/rplidar.launch
+
+# Fix 2: add lidar to the auto-start bringup chain
+cp ~/jetauto_ws/src/jetauto_bringup/launch/bringup.launch{,.bak}
+# manually add inside <launch>: <include file="$(find rplidar_ros)/launch/rplidar.launch"/>
+
+sudo systemctl enable start_app_node.service     # ensure it persists on reboot
+sudo systemctl restart start_app_node.service
+
+# === EVERY-TIME SANITY CHECK ===
+ps aux | grep -i rplidar        # exactly ONE rplidarNode process, no zombies
+rosnode list | grep rplidar
+rostopic hz /scan                # confirm ~10 Hz
+
+# === VIEW THE LIVE FEED ===
+rostopic echo /scan              # raw text
+rosrun rviz rviz                 # visual (Fixed Frame: laser, Add -> /scan -> LaserScan)
+
+# === SAVE AS POINT CLOUD (optional) ===
+python ~/scan_to_cloud.py &
 rosrun pcl_ros pointcloud_to_pcd input:=/cloud
 # Ctrl+C after a few files
-
-# 6. View
 pcl_viewer <file>.pcd
 ```
+
+---
+
+## Troubleshooting Checklist (if it breaks again)
+
+1. **Buffer overflow crash returns** → check `angle_compensate` is still `false` in `rplidar.launch` (a package reinstall/update could overwrite it — the `.bak` file has the working version).
+2. **`/rplidarNode` missing from `rosnode list`** → check `bringup.launch` still has the `rplidar_ros` include (same risk as above).
+3. **`/scan` exists but "no new messages"** → check for duplicate processes: `ps aux | grep -i rplidar`. Kill all with `pkill -9 -f rplidarNode; pkill -9 -f roslaunch`, then `sudo systemctl restart start_app_node.service`.
+4. **Service crashes silently** → `journalctl -u start_app_node.service --no-pager | tail -100` (systemd status alone won't show it, since output is redirected to null).
+5. **Serial port conflict** → `sudo lsof /dev/ttyUSB0` to check nothing else is holding it.
