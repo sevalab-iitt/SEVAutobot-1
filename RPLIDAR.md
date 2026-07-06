@@ -8,6 +8,8 @@ A common point of confusion is that there are **two different layers** involved 
 1. **The hardware layer** – how the RPLIDAR measures distances and streams raw data.
 2. **The ROS layer** – how the `rplidar_ros` driver converts that raw stream into standard ROS messages.
 
+<img width="610" height="464" alt="Screenshot 2026-07-06 101559" src="https://github.com/user-attachments/assets/d66d3388-4c8c-42c1-af68-fd59606e8a1b" />
+
 ---
 
 # 1. Hardware Data Acquisition
