@@ -21,6 +21,7 @@ The **RPLIDAR A1M8** (used on the JetAuto Pro platform) uses **laser triangulati
 - The displacement of the reflected laser spot is used to calculate distance through **triangulation**.
 - The sensor performs this process continuously while rotating to produce a complete 360° scan.
 
+- Process of sampling like - temperature, pressure, or voltage—and converting them into digital numeric values for a computer to process
 ---
 
 ## Rotation Speed
