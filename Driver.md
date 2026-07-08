@@ -209,65 +209,12 @@ Save and run this script — it maps all drivers automatically:
 nano ~/jetauto_ws/src/scan_drivers.py
 ```
 
-Paste:
+ ## Expected :
 
-```python
-#!/usr/bin/env python3
-"""scan_drivers.py — Auto-documents all ROS drivers in jetauto_ws"""
-import os, re
+ <img width="599" height="422" alt="image" src="https://github.com/user-attachments/assets/820f549e-8e8e-46ae-9c20-711c58e38908" />
 
-WS = os.path.expanduser("~/jetauto_ws/src")
+<img width="601" height="391" alt="image" src="https://github.com/user-attachments/assets/1b42335a-0391-4f58-b033-ab9b32ad99ec" />
 
-SUB = r'rospy\.Subscriber\s*\(\s*["\']([^"\']+)["\']'
-PUB = r'rospy\.Publisher\s*\(\s*["\']([^"\']+)["\']'
-NOD = r'rospy\.init_node\s*\(\s*["\']([^"\']+)["\']'
-RAT = r'rospy\.Rate\s*\(\s*([0-9.]+)\s*\)'
-DEV = r'(/dev/tty\w+|/dev/video\w+)'
-
-results = []
-for root, dirs, files in os.walk(WS):
-    dirs[:] = [d for d in dirs if d not in
-               ('build','devel','__pycache__','.git')]
-    for f in files:
-        if not f.endswith('.py'): continue
-        path = os.path.join(root, f)
-        try:
-            txt = open(path, errors='ignore').read()
-        except: continue
-        n = re.search(NOD, txt)
-        if not n: continue
-        results.append({
-            'file':  os.path.relpath(path, WS),
-            'node':  n.group(1),
-            'subs':  list(dict.fromkeys(re.findall(SUB, txt))),
-            'pubs':  list(dict.fromkeys(re.findall(PUB, txt))),
-            'rates': list(dict.fromkeys(re.findall(RAT, txt))),
-            'devs':  list(dict.fromkeys(re.findall(DEV, txt))),
-        })
-
-print("\n" + "="*65)
-print("  JETAUTO DRIVER SCAN REPORT")
-print("="*65)
-for r in results:
-    print(f"\nFILE  : {r['file']}")
-    print(f"NODE  : {r['node']}")
-    print(f"SUBS  : {r['subs']  or 'none'}")
-    print(f"PUBS  : {r['pubs']  or 'none'}")
-    print(f"RATE  : {r['rates'] or 'event-driven'} Hz")
-    print(f"DEVICE: {r['devs']  or 'no /dev port'}")
-    print("-"*65)
-
-# Save to file
-with open(os.path.expanduser("~/driver_report.txt"), "w") as f:
-    for r in results:
-        f.write(f"FILE  : {r['file']}\n")
-        f.write(f"NODE  : {r['node']}\n")
-        f.write(f"SUBS  : {r['subs']}\n")
-        f.write(f"PUBS  : {r['pubs']}\n")
-        f.write(f"RATE  : {r['rates']} Hz\n")
-        f.write(f"DEVICE: {r['devs']}\n\n")
-print("\nSaved to ~/driver_report.txt")
-```
 
 Run it:
 
