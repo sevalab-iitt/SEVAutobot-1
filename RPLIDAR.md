@@ -404,7 +404,8 @@ Always restart through the systemd service, not a manual `roslaunch` — this av
 ```bash
 rostopic hz /scan
 ```
-Should show a steady rate near 10 Hz.
+ ## Expected: <img width="346" height="290" alt="image" src="https://github.com/user-attachments/assets/eefcf468-c82d-4d27-8450-5890948199f5" />
+
 
 ### Step 5 — Convert raw scans into point cloud format
 
