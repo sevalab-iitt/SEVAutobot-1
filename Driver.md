@@ -243,19 +243,43 @@ scp jetauto@192.168.1.xxx:~/driver_report.txt ./
 
 ---
 
-## 10. Step 9 — Fill This Table With Your Findings
+## 10. Step 9 —  Driver Table
+ 
+| Driver | File Path | Launch File | Node Name |
+|---|---|---|---|
+| **Camera (RGB)** | `jetauto_ws/src/third_party/ros_astra_camera/ros/astra_camera_node.cpp` | `jetauto_peripherals/launch/astrapro.launch` | `astra_camera_node` |
+| **Depth Camera** | `jetauto_ws/src/third_party/ros_astra_camera/ros/astra_camera_node.cpp` | `jetauto_peripherals/launch/astrapro.launch` | `astra_camera_node` |
+| **LiDAR (RPLiDAR)** | `jetauto_ws/src/third_party/rplidar_ros/sdk/src/rplidar_driver.cpp` | `jetauto_peripherals/launch/include/rplidar.launch` | `rplidarNode` |
+| **LiDAR (YDLiDAR alt.)** | `jetauto_ws/src/third_party/ydlidar_ros_driver/` | `jetauto_peripherals/launch/include/ydlidar.launch` | `ydlidar_lidar_publisher` |
+| **Motor Control** | `jetauto_ws/src/jetauto_driver/jetauto_controller/scripts/jetauto_controller_main.py` | — | `jetauto_controller` |
+| **Servo / Arm** | `jetauto_ws/src/jetauto_driver/hiwonder_servo/hiwonder_servo_controllers/scripts/controller_manager.py` | — | `hiwonder_servo_manager` |
+| **IMU** | `jetauto_ws/src/third_party/mpu_6050_driver/scripts/imu_node.py` | `jetauto_peripherals/launch/imu.launch` | `imu_node` |
 
-After running Steps 4–7, fill in the actual paths from your robot:
+---
+ 
+## Verifying Live Topics  
 
-| Driver | File Path |
+ 
+roslaunch jetauto_bringup bringup.launch
+
+<img width="877" height="448" alt="image" src="https://github.com/user-attachments/assets/43202725-5868-4104-9395-8f59dbd38940" />
+<img width="839" height="460" alt="image" src="https://github.com/user-attachments/assets/f1bcac62-f03e-4d03-a576-0a91d0402772" />
+<img width="591" height="470" alt="image" src="https://github.com/user-attachments/assets/15467040-5617-44b9-8844-4e2c6213b841" />
+<img width="635" height="440" alt="image" src="https://github.com/user-attachments/assets/022e6211-74dc-410f-9b4e-9ef5c9990dfd" />
+ 
+rostopic list | grep -i "camera\|scan\|imu"
+
+<img width="522" height="65" alt="image" src="https://github.com/user-attachments/assets/af4aa713-acc8-4645-9ed3-ce95d65ad61a" />
+
+```
+
+| Expected Topic | Source Node |
 |---|---|
-| Camera | `jetauto_ws/src/______/scripts/_____.py` |
-| LiDAR | `jetauto_ws/src/______/scripts/_____.py` |
-| Motor Control | `jetauto_ws/src/______/scripts/_____.py` |
-| Servo / Arm | `jetauto_ws/src/______/scripts/_____.py` |
-| IMU | `jetauto_ws/src/______/scripts/_____.py` |
-| Depth Camera | `jetauto_ws/src/______/scripts/_____.py` |
-
+| `/scan` | RPLiDAR or YDLiDAR node |
+| `/camera/rgb/image_raw` | `astra_camera_node` |
+| `/camera/depth/image_raw` | `astra_camera_node` |
+| `/imu/data` | `imu_node` |
+| `/jetauto_controller/cmd_vel` | `jetauto_controller` |
 ---
 
 ## 11. Quick Command Reference
