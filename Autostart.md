@@ -1,7 +1,6 @@
-  Auto-Starting ALL ROS Nodes on Boot
+  # Auto-Starting ALL ROS Nodes on Boot
  Make every JetAuto ROS node (lidar, cameras, controller, servos, app communication, joystick, etc.) come up automatically on boot, without manually running any `roslaunch` command.
-
-**Platform:** JetAuto (Jetson-based), ROS Melodic
+ 
 
 ---
 
