@@ -37,8 +37,7 @@ So "autostart all nodes" = **make sure `start_app_node.service` is enabled, and 
 find ~/jetauto_ws -iname "*.service"
 ```
  ## Expected :
-<img width="647" height="272" alt="image" src="https://github.com/user-attachments/assets/85142179-e139-43a1-9d76-c0d69ac16d79" />
-
+ 
 
 View the actual installed service file:
 ```bash
