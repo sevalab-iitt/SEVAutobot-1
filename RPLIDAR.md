@@ -50,22 +50,7 @@ Unlike cameras that capture entire frames before transmitting them, the RPLIDAR 
 - Only a very small hardware FIFO buffer exists.
 - The sensor functions as a **real-time streaming device**, not a logging device.
 
-### Raw Serial Data Format
-
-Measurements are transmitted over the USB/serial interface using **Slamtec's proprietary binary protocol**. Each measurement packet contains:
-
-| Field | Description |
-|--------|-------------|
-| Start flag | Indicates the beginning of a new revolution |
-| Quality | Signal strength/confidence (6 bits) |
-| Angle | Raw angular measurement |
-| Distance | Raw distance measurement |
-
-These packets stream continuously over:
-```
-/dev/serial/by-id/usb-...
-```
-
+ 
 ### Role of `rplidar_ros`
 
 The `rplidar_ros` driver performs the following tasks:
