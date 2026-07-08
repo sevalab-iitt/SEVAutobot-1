@@ -1,4 +1,4 @@
-#  Auto-Starting ALL ROS Nodes on Boot
+<img width="953" height="508" alt="image" src="https://github.com/user-attachments/assets/5a611f73-e567-4b1f-aeba-8bab440aad12" />#  Auto-Starting ALL ROS Nodes on Boot
 
 **Goal:** Make every JetAuto ROS node (lidar, cameras, controller, servos, app communication, joystick, etc.) come up automatically on boot, without manually running any `roslaunch` command.
 
@@ -37,59 +37,42 @@ So "autostart all nodes" = **make sure `start_app_node.service` is enabled, and 
 ```bash
 find ~/jetauto_ws -iname "*.service"
 ```
-Typical output:
-```
-/home/jetauto/jetauto_ws/src/jetauto_bringup/service/jupyter.service
-/home/jetauto/jetauto_ws/src/jetauto_bringup/service/start_app_node.service   <-- this one
-/home/jetauto/jetauto_ws/src/jetauto_bringup/service/clear_log.service
-/home/jetauto/jetauto_ws/src/jetauto_bringup/service/fan_control.service
-/home/jetauto/jetauto_ws/src/jetauto_bringup/service/expand_rootfs.service
-/home/jetauto/jetauto_ws/src/jetauto_bringup/service/voltage_detect.service
-```
+ ## Expected :
+<img width="545" height="97" alt="image" src="https://github.com/user-attachments/assets/980b4285-9a81-4022-b2db-a224d5f36269" />
+
 
 View the actual installed service file:
 ```bash
 cat /etc/systemd/system/start_app_node.service
 ```
-```ini
-[Unit]
-Description=start node
-After=NetworkManager.service time-sync.target
-[Service]
-Type=simple
-User=jetauto
-Restart=always
-RestartSec=30
-KillMode=mixed
-ExecStart=/home/jetauto/jetauto_ws/src/jetauto_bringup/scripts/source_env.bash roslaunch jetauto_bringup bringup.launch
-StandardOutput=null
-StandardError=null
-[Install]
-WantedBy=multi-user.target
+ <img width="872" height="241" alt="image" src="https://github.com/user-attachments/assets/01238d11-dff2-4bba-bd7d-00475bfd1d5e" />
+
 ```
-
->  **Important:** `StandardOutput=null` / `StandardError=null` means crashes are **silent** in `systemctl status`. Always check real errors with:
-> ```bash
-> journalctl -u start_app_node.service --no-pager | tail -100
-> ```
-
----
+ ```
 
 ## 3. Managing the Service (applies to ALL nodes at once)
-
-```bash
+ 
 sudo systemctl status start_app_node.service       # current state
+
+<img width="953" height="508" alt="image" src="https://github.com/user-attachments/assets/849223e3-e264-43ca-98ba-b8d2c8d310f6" />
+
 systemctl is-enabled start_app_node.service        # confirm boot-persistence
+
+<img width="548" height="28" alt="image" src="https://github.com/user-attachments/assets/c1e48762-6e91-42b1-9371-81bbac1f2ced" />
+ 
 sudo systemctl enable start_app_node.service        # enable permanently (survives reboot)
+ 
 sudo systemctl disable start_app_node.service       # disable permanently (survives reboot)
+<img width="539" height="29" alt="image" src="https://github.com/user-attachments/assets/3c675bb2-9fe7-4880-abfb-ca4bb65b33b8" />
+
 sudo systemctl start start_app_node.service         # start now
 sudo systemctl stop start_app_node.service          # stop now
 sudo systemctl restart start_app_node.service       # restart (apply any launch file changes)
 journalctl -u start_app_node.service --no-pager | tail -100   # real logs/errors
-```
 
-Since **all** nodes are children of this one service, enabling/starting/stopping it controls the entire robot stack at once — you don't manage nodes individually at the systemd level.
+<img width="773" height="225" alt="image" src="https://github.com/user-attachments/assets/3955ad82-4615-4d81-9c9f-eea0aa938e7f" />
 
+ 
 ---
 
 ## 4. Inspect What's Currently Included
@@ -98,45 +81,16 @@ Since **all** nodes are children of this one service, enabling/starting/stopping
 find ~/jetauto_ws -iname "bringup.launch"
 cat ~/jetauto_ws/src/jetauto_bringup/launch/bringup.launch
 ```
+<img width="944" height="470" alt="image" src="https://github.com/user-attachments/assets/51ad3825-884e-42c5-8a9f-8b437fa143e7" />
+<img width="935" height="449" alt="image" src="https://github.com/user-attachments/assets/801d171f-063b-4dc3-843c-aa1e025c661c" />
+<img width="692" height="58" alt="image" src="https://github.com/user-attachments/assets/b5e108b4-f1ec-4ad6-9b96-3741897fc5db" />
+
 
 Full reference content of a typical `bringup.launch`:
-```xml
-<launch>
-    <arg name="usb_cam_name"        default="usb_cam"/>
-    <arg name="depth_camera_name"   default="astra_cam"/>
-    <arg name="image_topic"         default="image_raw"/>
-    <arg name="machine_type"        default="$(env MACHINE_TYPE)"/>
-    <arg name="depth_camera_type"   default="$(env DEPTH_CAMERA_TYPE)"/>
 
-    <!--底盘驱动(chassis driver)-->
-    <include file="$(find jetauto_controller)/launch/jetauto_controller.launch"/>
-    <!--舵机驱动(servo driver)-->
-    <include file="$(find hiwonder_servo_controllers)/launch/start.launch"/>
-    <!--姿态(Pose)-->
-    <node name="init_pose" pkg="jetauto_slam" type="init_pose.py" output="screen"/>
-    <!--usb摄像头(usb camera, JetAutoPro only)-->
-    <include if="$(eval machine_type == 'JetAutoPro')" file="$(find jetauto_peripherals)/launch/usb_cam.launch">
-        <arg name="usb_cam_name" value="$(arg usb_cam_name)"/>
-    </include>
-    <!--深度摄像头(depth camera)-->
-    <include file="$(find jetauto_peripherals)/launch/astrapro.launch">
-        <arg name="depth_camera_name" value="$(arg depth_camera_name)"/>
-        <arg name="image_topic" value="$(arg image_topic)"/>
-    </include>
-    <!--app画面传输(app image transmission)-->
-    <node if="$(eval depth_camera_type != '')" name="web_video_server" pkg="web_video_server" respawn="true" respawn_delay="2" type="web_video_server" output="screen"/>
-    <!--app通信(app communication)-->
-    <include file="$(find jetauto_bringup)/launch/rosbridge.launch"/>
-    <!--app功能(app function)-->
-    <include file="$(find jetauto_app)/launch/start_app.launch"/>
-    <!--手柄控制(handle control)-->
-    <include file="$(find jetauto_peripherals)/launch/joystick_control.launch"/>
-    <!--开机自检(power-on self test)-->
-    <node name="startup_check" pkg="jetauto_bringup" type="startup_check.py" output="screen"/>
-</launch>
-```
-
-**Anything NOT listed here will not auto-start.** For example, the lidar driver (`rplidar_ros`) was missing entirely by default — meaning it never auto-started even though a higher-level app node (`/lidar_app`) was present and waiting for it.
+ <img width="959" height="416" alt="image" src="https://github.com/user-attachments/assets/0b85f70b-9be6-4f26-a14a-e8a7bc6afe3a" />
+<img width="959" height="391" alt="image" src="https://github.com/user-attachments/assets/040ff6a1-05fd-4251-9366-8ac724c65d2b" />
+ 
 
 ---
 
@@ -205,7 +159,7 @@ rosnode list
 
 ---
 
-## 6. Full Expected Node List (once everything is included)
+## 6. Full Expected Node List 
 
 ```
 /ar_app
@@ -272,9 +226,7 @@ sleep 8
 ps aux | grep -i <node_name>
 rostopic hz <relevant_topic>
 ```
-
-**Rule of thumb:** never leave a manually-launched node/launch file running in a spare terminal while also relying on the systemd service — always fully kill manual test sessions before restarting/enabling the service.
-
+ 
 ---
 
 ## 8. Quick Reference
