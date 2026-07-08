@@ -180,9 +180,9 @@ The resulting data is published as `sensor_msgs/PointCloud2`, or saved to format
 roslaunch rplidar_ros rplidar.launch
 ```
 caused an infinite crash-restart loop:
-```
+ 
  <img width="959" height="246" alt="image" src="https://github.com/user-attachments/assets/855e7ed2-7cc7-45a8-8519-18b711b3aad9" />
-```
+ 
 Crashed immediately after printing `SDK Version:2.0.0`, before publishing any `/scan` data. `respawn="true"` in the launch file caused endless restarts.
 
 ### Root Cause
