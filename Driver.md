@@ -57,7 +57,7 @@ find ~/jetauto_ws/src/ -name "package.xml" \
   | sort
 ```
 
-> ## Verification:
+> ## Expected:
 > <img width="928" height="283" alt="image" src="https://github.com/user-attachments/assets/526eb275-a5e7-4268-9721-fcb1415f17cd" />
 
 
@@ -75,7 +75,7 @@ find ~/jetauto_ws/src/ -name "*.py" | wc -l
 # ALL launch files ( it show how drivers are started)
 find ~/jetauto_ws/src/ -name "*.launch" | sort
 ```
- ## Verification:
+ ## Expected:
  <img width="607" height="230" alt="image" src="https://github.com/user-attachments/assets/024c17e8-530f-4f24-a06d-e1f17f0246e7" />
 
  <img width="624" height="137" alt="image" src="https://github.com/user-attachments/assets/1bfdab74-18c8-489d-b2f9-6b2161d3eaa2" />
@@ -93,7 +93,7 @@ Run each command to find the exact file path of each driver:
 find ~/jetauto_ws/src/ -name "*.py" \
   | xargs grep -l "image_raw\|usb_cam\|VideoCapture" 2>/dev/null
 ```
-## Verification:
+## Expected:
 <img width="656" height="176" alt="image" src="https://github.com/user-attachments/assets/618b106e-3589-479c-afd1-3cb17a1bfcb1" />
 
 ### LiDAR Driver
@@ -101,7 +101,7 @@ find ~/jetauto_ws/src/ -name "*.py" \
 find ~/jetauto_ws/src/ -name "*.py" \
   | xargs grep -l "LaserScan\|/scan\|ydlidar" 2>/dev/null
 ```
-## Verification: 
+## Expected:
 <img width="736" height="97" alt="image" src="https://github.com/user-attachments/assets/34625651-81a5-4234-983d-b0c4dab23f49" />
 
 ### Motor / Chassis Driver
@@ -109,7 +109,7 @@ find ~/jetauto_ws/src/ -name "*.py" \
 find ~/jetauto_ws/src/ -name "*.py" \
   | xargs grep -l "cmd_vel\|Twist\|motor" 2>/dev/null
 ```
-## Verification:
+## Expected:
 <img width="905" height="216" alt="image" src="https://github.com/user-attachments/assets/1511e1b5-75f7-4842-a88e-d6a78b7f662d" />
 
 ### Servo / Arm Driver
@@ -117,7 +117,7 @@ find ~/jetauto_ws/src/ -name "*.py" \
 find ~/jetauto_ws/src/ -name "*.py" \
   | xargs grep -l "servo\|HTD\|bus_servo\|MultiRawIdPosDur" 2>/dev/null
 ```
- ## Verification:  
+## Expected: 
  <img width="944" height="217" alt="image" src="https://github.com/user-attachments/assets/40502971-acf8-44db-ad2e-525e02c826fa" />
 
 
@@ -126,7 +126,7 @@ find ~/jetauto_ws/src/ -name "*.py" \
 find ~/jetauto_ws/src/ -name "*.py" \
   | xargs grep -l "Imu\|imu\|accelerometer" 2>/dev/null
 ```
- ## Verification: 
+## Expected:
  <img width="957" height="239" alt="image" src="https://github.com/user-attachments/assets/7f34866a-96b7-406f-b3ef-e187ad18d9b4" />
 
  
@@ -135,7 +135,7 @@ find ~/jetauto_ws/src/ -name "*.py" \
 find ~/jetauto_ws/src/ -name "*.py" \
   | xargs grep -l "depth\|PointCloud\|astra\|openni" 2>/dev/null
 ```
- ## Verification:  
+## Expected:
  <img width="747" height="218" alt="image" src="https://github.com/user-attachments/assets/21dc7820-15ff-4eeb-b244-0fb7bff93035" />
 
 ---
@@ -158,7 +158,7 @@ head -50 ~/jetauto_ws/src/PACKAGE_NAME/scripts/DRIVER_FILE.py
 grep -n "Subscriber\|Publisher\|rospy.init" \
   ~/jetauto_ws/src/PACKAGE_NAME/scripts/DRIVER_FILE.py
 ```
-## verification:
+## Expected:
 <img width="874" height="114" alt="image" src="https://github.com/user-attachments/assets/1f5f6fa8-a995-4a1c-8f9e-2d8f5af0b2ac" />
 
 >  **Note — What to look for inside each driver**
@@ -217,13 +217,17 @@ nano ~/jetauto_ws/src/scan_drivers.py
 
 
 Run it:
-
-```bash
+ 
 python3 ~/jetauto_ws/src/scan_drivers.py
+
+## Expected:
+ <img width="854" height="437" alt="image" src="https://github.com/user-attachments/assets/df87a37a-2e17-495d-9cc3-c99b078fbd3b" />
 
 # View the saved report
 cat ~/driver_report.txt
-```
+
+## Expected:
+ <img width="737" height="365" alt="image" src="https://github.com/user-attachments/assets/943c3920-5e19-42df-b920-4339bcd9c80b" />
 
 ---
 
