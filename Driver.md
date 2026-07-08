@@ -236,10 +236,7 @@ cat ~/driver_report.txt
 ```bash
 # Run this on YOUR LAPTOP (not robot)
 scp jetauto@192.168.1.xxx:~/driver_report.txt ./
-
-# Now open driver_report.txt on your laptop
-# Copy the content into your documentation
-```
+ 
 
 ---
 
