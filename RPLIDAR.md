@@ -363,23 +363,8 @@ Save this as a reusable script so this fix is always one command away:
 ```bash
 nano ~/lidar_safe_start.sh
 ```
-```bash
-#!/bin/bash
-echo "Cleaning up any old lidar processes..."
-pkill -9 -f rplidarNode
-pkill -9 -f "roslaunch rplidar_ros"
-sleep 1
+ <img width="625" height="242" alt="image" src="https://github.com/user-attachments/assets/404f4dc7-4e1a-431b-a191-3f4893c46b9d" />
 
-echo "Restarting the lidar properly..."
-sudo systemctl restart start_app_node.service
-sleep 8
-
-echo "Current lidar processes:"
-ps aux | grep -i rplidar | grep -v grep
-
-echo "Checking if data is flowing (5 seconds):"
-timeout 5 rostopic hz /scan
-```
 ```bash
 chmod +x ~/lidar_safe_start.sh
 ```
