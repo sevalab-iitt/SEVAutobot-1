@@ -37,6 +37,7 @@ So "autostart all nodes" = **make sure `start_app_node.service` is enabled, and 
 find ~/jetauto_ws -iname "*.service"
 ```
  ## Expected :
+<img width="620" height="94" alt="image" src="https://github.com/user-attachments/assets/61cde66c-8db1-4298-b3b0-2627081bde7f" />
  
 
 View the actual installed service file:
@@ -52,7 +53,8 @@ cat /etc/systemd/system/start_app_node.service
  
 sudo systemctl status start_app_node.service       # current state
 
-<img width="953" height="508" alt="image" src="https://github.com/user-attachments/assets/849223e3-e264-43ca-98ba-b8d2c8d310f6" />
+<img width="647" height="272" alt="image" src="https://github.com/user-attachments/assets/8fc0e72e-da0f-4e3c-8d22-04d2af8aa5ce" />
+
 
 systemctl is-enabled start_app_node.service        # confirm boot-persistence
 
