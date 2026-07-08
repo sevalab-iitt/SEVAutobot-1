@@ -398,6 +398,7 @@ sudo systemctl start start_app_node.service
 sleep 8
 ```
 Always restart through the systemd service, not a manual `roslaunch` — this avoids the duplicate-process conflict in Section 7.
+<img width="953" height="155" alt="image" src="https://github.com/user-attachments/assets/9325ede1-70de-48c3-b1f2-8bbca34474de" />
 
 ### Step 4 — Confirm it's working
 ```bash
