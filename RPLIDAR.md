@@ -81,18 +81,8 @@ The `rplidar_ros` driver performs the following tasks:
 
 After a complete revolution is assembled, `rplidar_ros` publishes the scan on the `/scan` topic, using the standard ROS message type `sensor_msgs/LaserScan`:
 
-```cpp
-Header header
-float32 angle_min
-float32 angle_max
-float32 angle_increment
-float32 time_increment
-float32 scan_time
-float32 range_min
-float32 range_max
-float32[] ranges
-float32[] intensities
-```
+ <img width="447" height="197" alt="image" src="https://github.com/user-attachments/assets/07a60d3a-6471-423c-bc53-c346222e163a" />
+
 
 | Field | Description |
 |--------|-------------|
