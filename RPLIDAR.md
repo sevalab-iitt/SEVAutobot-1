@@ -226,25 +226,8 @@ diff ~/jetauto_ws/src/third_party/rplidar_ros/launch/rplidar.launch.bak \
 ```
 
 ### Final Working Launch File
-```xml
-<launch>
-  <node
-      name="rplidarNode"
-      pkg="rplidar_ros"
-      type="rplidarNode"
-      output="screen"
-      respawn="true">
-    <param name="serial_port" type="string" value="/dev/serial/by-id/usb-1a86_USB_Serial-if00-port0"/>
-    <param name="serial_baudrate" type="int" value="115200"/>
-    <!-- For A3:
-    <param name="serial_baudrate" type="int" value="256000"/>
-    -->
-    <param name="frame_id" type="string" value="laser"/>
-    <param name="inverted" type="bool" value="false"/>
-    <param name="angle_compensate" type="bool" value="false"/>
-  </node>
-</launch>
-```
+ <img width="755" height="296" alt="image" src="https://github.com/user-attachments/assets/dca35eb6-f920-4f82-a401-6310290b57e0" />
+
 
 **Verify:** relaunch and confirm the SUMMARY block prints `angle_compensate: False`, with no `*** buffer overflow detected ***`.
 
