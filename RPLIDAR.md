@@ -404,7 +404,8 @@ Always restart through the systemd service, not a manual `roslaunch` — this av
 ```bash
 rostopic hz /scan
 ```
- ## Expected: <img width="346" height="290" alt="image" src="https://github.com/user-attachments/assets/eefcf468-c82d-4d27-8450-5890948199f5" />
+ ## Expected:                                                                                                            <img width="346" height="290" alt="image" src="https://github.com/user-attachments/assets/eefcf468-c82d-4d27-8450-5890948199f5" />
+<img width="719" height="355" alt="image" src="https://github.com/user-attachments/assets/43df37c5-1c5c-4fac-8e2a-2ceb863c6498" />
 
 
 ### Step 5 — Convert raw scans into point cloud format
@@ -413,31 +414,19 @@ Create the converter script once:
 ```bash
 nano ~/scan_to_cloud.py
 ```
-```python
-#!/usr/bin/env python
-import rospy
-from sensor_msgs.msg import LaserScan, PointCloud2
-import laser_geometry.laser_geometry as lg
+ <img width="435" height="247" alt="image" src="https://github.com/user-attachments/assets/2f23f399-6212-4f3a-b52c-7aa162708d32" />
 
-projector = lg.LaserProjection()
-pub = rospy.Publisher('/cloud', PointCloud2, queue_size=1)
-
-def callback(scan_msg):
-    cloud = projector.projectLaser(scan_msg)
-    pub.publish(cloud)
-
-rospy.init_node('scan_to_cloud')
-rospy.Subscriber('/scan', LaserScan, callback)
-rospy.spin()
-```
 ```bash
 chmod +x ~/scan_to_cloud.py
 python ~/scan_to_cloud.py &
 ```
+<img width="402" height="45" alt="image" src="https://github.com/user-attachments/assets/0d465fbb-fd77-45e8-bbe3-f6143188fd38" />
+ 
 Confirm it's working:
 ```bash
 rostopic hz /cloud
 ```
+<img width="452" height="150" alt="image" src="https://github.com/user-attachments/assets/d1effba5-41a4-4af1-b526-9a5f6e4ee278" />
 
 ### Step 6 — (Optional) View it live in RViz
 ```bash
@@ -447,6 +436,8 @@ rosrun rviz rviz
 - **Add** → **By topic** → `/cloud` → **PointCloud2** (or `/scan` → **LaserScan** for the raw 2D view)
 
 RViz is purely for looking at data that's already flowing — not required for actually collecting it.
+<img width="379" height="219" alt="image" src="https://github.com/user-attachments/assets/f64a0c2c-a987-485f-a06d-7a12eb5d9296" />
+<img width="530" height="371" alt="image" src="https://github.com/user-attachments/assets/4517b6d6-d634-4c55-a6e7-1896c8a14060" />
 
 ### Step 7 — Capture a proper, bounded dataset
 ```bash
@@ -454,7 +445,10 @@ mkdir -p ~/lidardata/dataset/pointclouds
 cd ~/lidardata/dataset/pointclouds
 timeout 10 rosrun pcl_ros pointcloud_to_pcd input:=/cloud _prefix:=scan_
 ```
-Always use `timeout <seconds>` — this bounds the capture to a fixed, known duration instead of generating an unbounded stream of files.
+ <img width="776" height="368" alt="image" src="https://github.com/user-attachments/assets/58645fa3-8a23-4560-89c2-466af6072bb2" />
+ <img width="887" height="61" alt="image" src="https://github.com/user-attachments/assets/6fa8332a-5fc7-4aa9-99a1-2e0e24440354" />
+ <img width="959" height="271" alt="image" src="https://github.com/user-attachments/assets/37b55373-dcc0-4eec-95b4-28977b53a78b" />
+<img width="460" height="377" alt="image" src="https://github.com/user-attachments/assets/136542a1-909a-4e47-8d5b-5e2bc1c1ce92" />
 
 ### Step 8 — Merge the capture into a single file
 ```bash
