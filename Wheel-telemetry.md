@@ -1,4 +1,4 @@
-# Chapter — Wheel Telemetry: Actual Speed Verification
+# Wheel Telemetry: Actual Speed Verification
 
 ## 1. Purpose
 
