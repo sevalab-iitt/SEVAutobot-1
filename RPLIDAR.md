@@ -380,7 +380,8 @@ From now on, run `~/lidar_safe_start.sh` any time `/scan` goes silent.
 ```bash
 ls -l /dev/serial/by-id/
 ```
-Expected: `usb-1a86_USB_Serial-if00-port0 -> ../../ttyUSB0`. If empty, fix the physical connection first.
+Expected: `<img width="641" height="41" alt="image" src="https://github.com/user-attachments/assets/43696fb6-ce29-4f7b-a4f3-e7276051fb5e" />
+`. If empty, fix the physical connection first.
 
 ### Step 2 — Clean up anything already running
 ```bash
