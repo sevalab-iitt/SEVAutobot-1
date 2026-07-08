@@ -319,12 +319,8 @@ rosnode list | grep -i rplidar
 ## 7. Common Issue: Duplicate Process Conflict
 
 ### Symptom
-```bash
-rostopic echo /scan
-subscribed to [/scan]
-no new messages
-no new messages
-...
+<img width="347" height="131" alt="image" src="https://github.com/user-attachments/assets/674bb92e-c852-4f0d-94aa-46f8ef202c42" />
+
 ```
 `/scan` topic exists (registered), but nothing is actually publishing to it. **This is the single most common lidar issue on this robot** and will likely recur.
 
