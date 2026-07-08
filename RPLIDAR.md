@@ -370,8 +370,8 @@ From now on, run `~/lidar_safe_start.sh` any time `/scan` goes silent.
 ```bash
 ls -l /dev/serial/by-id/
  ```
- ## Expected: `<img width="641" height="41" alt="image" src="https://github.com/user-attachments/assets/43696fb6-ce29-4f7b-a4f3-e7276051fb5e" />
-`. If empty, fix the physical connection first.
+ ## Expected:                                                                                                                       <img width="641" height="41" alt="image" src="https://github.com/user-attachments/assets/43696fb6-ce29-4f7b-a4f3-e7276051fb5e" />
+ . If empty, fix the physical connection first.
 
 ### Step 2 — Clean up anything already running
 ```bash
@@ -394,10 +394,11 @@ Always restart through the systemd service, not a manual `roslaunch` — this av
 ```bash
 rostopic hz /scan
 ```
- ## Expected:                                                                                                            <img width="346" height="290" alt="image" src="https://github.com/user-attachments/assets/eefcf468-c82d-4d27-8450-5890948199f5" />
-<img width="719" height="355" alt="image" src="https://github.com/user-attachments/assets/43df37c5-1c5c-4fac-8e2a-2ceb863c6498" />
-
-
+ ## Expected:    
+ 
+ <img width="719" height="355" alt="image" src="https://github.com/user-attachments/assets/43df37c5-1c5c-4fac-8e2a-2ceb863c6498" />
+ <img width="346" height="290" alt="image" src="https://github.com/user-attachments/assets/eefcf468-c82d-4d27-8450-5890948199f5" />
+  
 ### Step 5 — Convert raw scans into point cloud format
 
 Create the converter script once:
@@ -426,6 +427,7 @@ rosrun rviz rviz
 - **Add** → **By topic** → `/cloud` → **PointCloud2** (or `/scan` → **LaserScan** for the raw 2D view)
 
 RViz is purely for looking at data that's already flowing — not required for actually collecting it.
+
 <img width="379" height="219" alt="image" src="https://github.com/user-attachments/assets/f64a0c2c-a987-485f-a06d-7a12eb5d9296" />
 <img width="530" height="371" alt="image" src="https://github.com/user-attachments/assets/4517b6d6-d634-4c55-a6e7-1896c8a14060" />
 
