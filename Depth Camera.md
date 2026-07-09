@@ -1,5 +1,7 @@
 # Object Tracking
-<img width="896" height="329" alt="Screenshot 2026-07-09 124113" src="https://github.com/user-attachments/assets/e4ffa1d1-858f-431e-94a0-7eac720051ae" />
+<img width="930" height="473" alt="Screenshot 2026-07-09 122216" src="https://github.com/user-attachments/assets/4e463a0f-1e67-4234-aef9-5e27c058b8cf" />
+<img width="902" height="469" alt="Screenshot 2026-07-07 120449" src="https://github.com/user-attachments/assets/23181cf9-5d5e-4374-b095-0247d92f1bc2" />
+
 
 ## 1. Stop the APP service
 
