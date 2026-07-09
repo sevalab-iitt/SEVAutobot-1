@@ -2,8 +2,8 @@
 # Hand Trajectory Recognition
 
  The system detects hand landmarks, recognizes predefined hand gestures, and records the fingertip trajectory in real time.
-<img width="953" height="470" alt="Screenshot 2026-07-09 111044" src="https://github.com/user-attachments/assets/19a1548b-b953-4c65-adc8-acab2032a046" />
-<img width="463" height="251" alt="Hand Trajectory 1" src="https://github.com/user-attachments/assets/2d8daace-2bcb-4642-877b-56500510d02d" />
+<img width="400" height="250" alt="Screenshot 2026-07-09 111044" src="https://github.com/user-attachments/assets/19a1548b-b953-4c65-adc8-acab2032a046" />
+<img width="400" height="250" alt="Hand Trajectory 1" src="https://github.com/user-attachments/assets/2d8daace-2bcb-4642-877b-56500510d02d" />
 
 ---
 
