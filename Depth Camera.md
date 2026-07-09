@@ -274,6 +274,98 @@ sudo systemctl restart start_app_node.service
 <img width="400" height="250" alt="Screenshot 2026-07-09 115607" src="https://github.com/user-attachments/assets/21c0170d-3a5a-4a00-9d9b-7da754cfac8b" />
 <img width="400" height="250" alt="Screenshot 2026-07-08 224721" src="https://github.com/user-attachments/assets/3c0dc31f-7db3-416c-aee1-949716c31b57" />
 
+## Launch Human Posture Control
+
+Stop the default application before launching the demo.
+
+```bash
+sudo systemctl stop start_app_node.service
+```
+
+Launch the body tracking node.
+
+```bash
+roslaunch jetauto_example body_and_rgb_control.launch
+```
+
+or
+
+```bash
+roslaunch jetauto_example body_track.launch
+```
+
+---
+
+## Verify Running Nodes
+
+```bash
+rosnode list
+```
+
+Expected nodes include:
+
+```text
+/body_control
+/camera/*
+/arm_controller
+```
+
+---
+
+## List Available Topics
+
+```bash
+rostopic list
+```
+
+---
+
+## Check Robot Motion Commands
+
+Display the velocity commands generated from body posture.
+
+```bash
+rostopic echo /cmd_vel
+```
+
+Output:
+
+```yaml
+linear:
+  x: 0.0
+  y: 0.0
+  z: 0.0
+angular:
+  x: 0.0
+  y: 0.0
+  z: -0.081
+```
+
+
+---
+
+## View Tracking Data 
+
+```bash
+rostopic echo /jetauto_controller/cmd_vel
+
+```
+---
+
+## Stop Demo
+
+Press
+
+```text
+Ctrl + C
+```
+
+Restart the default JetAuto service
+
+```bash
+sudo systemctl start start_app_node.service
+```
+---
 # Body Tracking
 
 ## 1. Stop the APP Control Service
@@ -426,8 +518,5 @@ jetauto_ws/
             └── body_control/
                 └── body_track.py
 ```
----
-```
-rostopic echo /jetauto_controller/cmd_vel
-```
+
 ---
