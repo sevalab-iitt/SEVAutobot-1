@@ -354,3 +354,119 @@ After finishing the experiment:
 ```bash
 sudo systemctl restart start_app_node.service
 ```
+# Human Tracking 
+<img width="959" height="515" alt="Screenshot 2026-07-09 120715" src="https://github.com/user-attachments/assets/d68d5765-e779-4838-954d-343c115e42b3" />
+
+The robot detects and tracks a person in real time using the Astra Pro Plus RGB-D camera and MediaPipe Pose. The detected body is continuously tracked, allowing the robot to follow the user's movements.
+
+---
+
+## Prerequisites
+
+- JetAuto Robot
+- ROS Melodic
+- Astra Pro Plus RGB-D Camera
+- MediaPipe Pose
+- OpenCV
+- Python 3
+
+---
+
+## Launch Instructions
+
+### 1. Stop the APP Control Service
+
+```bash
+sudo systemctl stop start_app_node.service
+```
+
+### 2. Launch the Human Tracking Node
+
+```bash
+roslaunch jetauto_example body_track.launch
+```
+
+---
+
+## Program Workflow
+
+1. Initialize the Astra Pro Plus RGB-D camera.
+2. Start the ROS Human Tracking node.
+3. Detect the human body using MediaPipe Pose.
+4. Estimate the body center position.
+5. Continuously track the detected person.
+6. Display the tracking result with FPS in the camera window.
+
+---
+
+## Stop the Program
+
+Press:
+
+```text
+Ctrl + C
+```
+
+---
+
+## Restart the APP Control Service
+
+```bash
+sudo systemctl restart start_app_node.service
+```
+
+---
+
+## Complete Workflow
+
+```bash
+# Stop the APP service
+sudo systemctl stop start_app_node.service
+
+# Launch Human Tracking
+roslaunch jetauto_example body_track.launch
+```
+
+After completing the experiment:
+
+```bash
+# Restart the APP service
+sudo systemctl restart start_app_node.service
+```
+
+---
+
+## Expected Output
+
+- Live RGB camera feed.
+- Human body detected in real time.
+- Body landmarks displayed on the screen.
+- Human tracking point (body center) highlighted.
+- FPS displayed in the top-left corner.
+
+---
+
+## Project Structure
+
+```text
+jetauto_ws/
+└── src/
+    └── jetauto_example/
+        ├── launch/
+        │   └── body_track.launch
+        └── scripts/
+            └── body_control/
+                └── body_track.py
+```
+
+---
+
+## Technologies Used
+
+- ROS Melodic
+- Python 3
+- OpenCV
+- MediaPipe Pose
+- Astra Pro Plus RGB-D Camera
+
+---
