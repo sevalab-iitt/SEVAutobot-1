@@ -299,10 +299,7 @@ rosnode list | grep -i rplidar
 ```
 `/scan` topic exists (registered), but nothing is actually publishing to it. **This is the single most common lidar issue on this robot** and will likely recur.
 
-### Root Cause
-
-**Two `roslaunch rplidar_ros rplidar.launch` processes running simultaneously** — one from the systemd bringup service, and a leftover manual one from testing that was never fully killed. Both fight over the same `/dev/ttyUSB0` serial port. Symptoms in `ps aux`:
-```
+ 
 roslaunch rplidar_ros rplidar.launch     (older PID)
 roslaunch rplidar_ros rplidar.launch     (newer PID)
 [rplidarNode] <defunct>                   ← zombie process
