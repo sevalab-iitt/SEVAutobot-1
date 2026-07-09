@@ -297,3 +297,60 @@ This is a known shutdown issue with OpenCV 3.x on some Jetson/ROS Melodic system
 
 <img width="400" height="250" alt="Screenshot 2026-07-09 115607" src="https://github.com/user-attachments/assets/21c0170d-3a5a-4a00-9d9b-7da754cfac8b" />
 <img width="400" height="250" alt="Screenshot 2026-07-08 224721" src="https://github.com/user-attachments/assets/3c0dc31f-7db3-416c-aee1-949716c31b57" />
+# Body Tracking
+
+## 1. Stop the APP Control Service
+
+```bash
+sudo systemctl stop start_app_node.service
+```
+
+## 2. Launch the Body Tracking Node
+
+```bash
+roslaunch jetauto_example body_track.launch
+```
+
+---
+
+## Program Workflow
+
+1. Initialize the Astra Pro Plus RGB-D camera.
+2. Start the ROS Body Tracking node.
+3. Detect the human body using MediaPipe Pose.
+4. Track the user's body in real time.
+5. Display the detected body landmarks and tracking results in the camera window.
+
+---
+
+## Stop the Program
+
+Press:
+
+```text
+Ctrl + C
+```
+
+---
+
+## Restart the APP Control Service
+
+```bash
+sudo systemctl restart start_app_node.service
+```
+
+---
+
+## Complete Workflow
+
+```bash
+sudo systemctl stop start_app_node.service
+
+roslaunch jetauto_example body_track.launch
+```
+
+After finishing the experiment:
+
+```bash
+sudo systemctl restart start_app_node.service
+```
