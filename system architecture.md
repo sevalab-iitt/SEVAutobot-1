@@ -162,20 +162,26 @@ EOF
 ## 5. Topics & Services After Bringup
 
  
-# Once bringup is running,  to list everything live
+## Once bringup is running,  to list everything live
+
 rostopic list
+
 <img width="461" height="458" alt="image" src="https://github.com/user-attachments/assets/a9da590f-2b95-4b2a-a24f-8025266c7c1e" />
 <img width="424" height="464" alt="image" src="https://github.com/user-attachments/assets/3dba6158-f400-46ce-992e-127358e9ffd1" />
 
 
 rosservice list
+
 <img width="540" height="463" alt="image" src="https://github.com/user-attachments/assets/7612a975-4e13-4498-b89f-297907e53742" />
 
 rosnode list
+
 <img width="402" height="464" alt="image" src="https://github.com/user-attachments/assets/697be8af-39bc-4252-af48-578867ea56cc" />
 
-# Check publish rate of a sensor topic ( to confirm  driver is alive)
+## Check publish rate of a sensor topic  
+
 rostopic hz /scan
+
 <img width="494" height="363" alt="image" src="https://github.com/user-attachments/assets/01363051-b2df-4346-96ab-6193e8f22c6a" />
 
 rostopic hz /camera/rgb/image_raw
