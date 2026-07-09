@@ -1,3 +1,148 @@
+# Hand Gesture Control & Hand Trajectory 
+# Hand Trajectory Recognition
+
+ The system detects hand landmarks, recognizes predefined hand gestures, and records the fingertip trajectory in real time.
+<img width="953" height="470" alt="Screenshot 2026-07-09 111044" src="https://github.com/user-attachments/assets/19a1548b-b953-4c65-adc8-acab2032a046" />
+<img width="463" height="251" alt="Hand Trajectory 1" src="https://github.com/user-attachments/assets/2d8daace-2bcb-4642-877b-56500510d02d" />
+
+---
+
+## Prerequisites
+
+- JetAuto robot
+- ROS Melodic
+- Astra Pro Plus camera
+- MediaPipe Hands
+- OpenCV
+
+---
+
+## Launch Instructions
+
+### 1. Stop the APP Control Service
+
+```bash
+sudo systemctl stop start_app_node.service
+```
+
+### 2. Launch the Hand Trajectory Node
+
+```bash
+roslaunch jetauto_example hand_trajectory_node.launch
+```
+
+---
+
+## Program Workflow
+
+1. The camera captures live video.
+2. MediaPipe detects the hand and extracts 21 hand landmarks.
+3. The program recognizes predefined hand gestures.
+4. When the **"1"** gesture is detected, the system begins recording the fingertip trajectory.
+5. The fingertip path is drawn continuously on the live camera image.
+6. When the **"5"** gesture is detected, the recorded trajectory is cleared.
+
+---
+
+## Gesture Functions
+
+| Gesture | Function |
+|----------|----------|
+| **1** | Start recording fingertip trajectory |
+| **5** | Clear recorded trajectory |
+
+---
+
+## Stop the Program
+
+Press:
+
+```text
+Ctrl + C
+```
+
+---
+
+## Restart the APP Service
+
+```bash
+sudo systemctl restart start_app_node.service
+```
+
+---
+
+## Complete Workflow
+
+```bash
+sudo systemctl stop start_app_node.service
+
+roslaunch jetauto_example hand_trajectory_node.launch
+```
+
+After completing the experiment:
+
+```bash
+sudo systemctl restart start_app_node.service
+```
+
+---
+
+## Expected Output
+
+- Live camera feed is displayed.
+- Hand landmarks are detected and connected.
+- Fingertip trajectory is drawn on the screen after the **"1"** gesture is recognized.
+- Display includes the current FPS.
+- Showing the **"5"** gesture clears the trajectory.
+
+---
+
+## Project Structure
+
+```
+jetauto_ws/
+└── src/
+    └── jetauto_example/
+        └── scripts/
+            └── hand_gesture_control/
+                └── hand_trajectory_node.py
+```
+
+---
+
+## Algorithm
+
+1. Capture image from the Astra Pro Plus camera.
+2. Detect hand landmarks using MediaPipe Hands.
+3. Estimate the hand gesture based on finger joint angles.
+4. If gesture **"1"** is detected:
+   - Record the fingertip coordinates.
+   - Append the coordinates to the trajectory list.
+5. Draw the fingertip trajectory using OpenCV.
+6. If gesture **"5"** is detected:
+   - Clear the stored trajectory.
+7. Display the processed frame.
+
+---
+
+## Key Technologies
+
+- ROS Melodic
+- Python 3
+- OpenCV
+- MediaPipe Hands
+- Astra Pro Plus RGB Camera
+
+---
+
+## Notes
+
+- Keep your hand within the camera's field of view for accurate detection.
+- Ensure adequate lighting to improve hand landmark detection.
+- The trajectory is stored only in memory during execution unless additional code is added to save the coordinates or images.
+- To save the trajectory permanently, modify `hand_trajectory_node.py` to write the fingertip coordinates to a CSV file and save the processed image using `cv2.imwrite()`.
+  ---
+  
 # Object Tracking
 <img width="930" height="473" alt="Screenshot 2026-07-09 122216" src="https://github.com/user-attachments/assets/4e463a0f-1e67-4234-aef9-5e27c058b8cf" />
 <img width="902" height="469" alt="Screenshot 2026-07-07 120449" src="https://github.com/user-attachments/assets/23181cf9-5d5e-4374-b095-0247d92f1bc2" />
