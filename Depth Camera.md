@@ -87,16 +87,6 @@ sudo systemctl restart start_app_node.service
 
 ---
 
-## Expected Output
-
-- Live camera feed is displayed.
-- Hand landmarks are detected and connected.
-- Fingertip trajectory is drawn on the screen after the **"1"** gesture is recognized.
-- Display includes the current FPS.
-- Showing the **"5"** gesture clears the trajectory.
-
----
-
 ## Project Structure
 
 ```
@@ -277,26 +267,13 @@ sudo systemctl restart start_app_node.service
 
 - Ensure the **Astra Pro Plus** camera is connected before launching the program.
 - Stand approximately **1–3 meters** in front of the camera for reliable body pose detection.
-- If MediaPipe displays the warning:
-
-```text
-Can't find file: mediapipe/modules/pose_detection/pose_detection.tflite
-```
-
-the program may still continue to run using the available TensorFlow Lite GPU delegate, but verify that the MediaPipe model files are correctly installed if body detection does not work.
-
-- If you terminate the program using **Ctrl + C**, you may see an OpenCV shutdown exception similar to:
-
-```text
-OpenCV Error: (-215) tlsSlots.size() > slotIdx in function 'releaseSlot'
-```
-
-This is a known shutdown issue with OpenCV 3.x on some Jetson/ROS Melodic systems and generally occurs during program exit. It does not usually indicate a problem with the body control functionality.
-
+  ---
+  
 # Human Posture Control 
 
 <img width="400" height="250" alt="Screenshot 2026-07-09 115607" src="https://github.com/user-attachments/assets/21c0170d-3a5a-4a00-9d9b-7da754cfac8b" />
 <img width="400" height="250" alt="Screenshot 2026-07-08 224721" src="https://github.com/user-attachments/assets/3c0dc31f-7db3-416c-aee1-949716c31b57" />
+
 # Body Tracking
 
 ## 1. Stop the APP Control Service
@@ -434,15 +411,6 @@ After completing the experiment:
 sudo systemctl restart start_app_node.service
 ```
 
----
-
-## Expected Output
-
-- Live RGB camera feed.
-- Human body detected in real time.
-- Body landmarks displayed on the screen.
-- Human tracking point (body center) highlighted.
-- FPS displayed in the top-left corner.
 
 ---
 
@@ -458,15 +426,8 @@ jetauto_ws/
             └── body_control/
                 └── body_track.py
 ```
-
 ---
-
-## Technologies Used
-
-- ROS Melodic
-- Python 3
-- OpenCV
-- MediaPipe Pose
-- Astra Pro Plus RGB-D Camera
-
+```
+rostopic echo /jetauto_controller/cmd_vel
+```
 ---
