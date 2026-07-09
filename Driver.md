@@ -1,5 +1,5 @@
  
-> **ROS Melodic** · Workspace: `~/jetauto_ws` · Ubuntu 18.04
+# Drivers
 
 ## Table of Contents
 1. [What is a Driver in ROS?](#1-what-is-a-driver-in-ros)
