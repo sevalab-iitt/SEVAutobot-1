@@ -292,3 +292,8 @@ OpenCV Error: (-215) tlsSlots.size() > slotIdx in function 'releaseSlot'
 ```
 
 This is a known shutdown issue with OpenCV 3.x on some Jetson/ROS Melodic systems and generally occurs during program exit. It does not usually indicate a problem with the body control functionality.
+
+# Human Posture Control 
+
+<img width="400" height="250" alt="Screenshot 2026-07-09 115607" src="https://github.com/user-attachments/assets/21c0170d-3a5a-4a00-9d9b-7da754cfac8b" />
+<img width="400" height="250" alt="Screenshot 2026-07-08 224721" src="https://github.com/user-attachments/assets/3c0dc31f-7db3-416c-aee1-949716c31b57" />
