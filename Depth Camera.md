@@ -1,4 +1,5 @@
 # Object Tracking
+<img width="896" height="329" alt="Screenshot 2026-07-09 124113" src="https://github.com/user-attachments/assets/e4ffa1d1-858f-431e-94a0-7eac720051ae" />
 
 ## 1. Stop the APP service
 
@@ -68,6 +69,7 @@ After finishing:
 sudo systemctl restart start_app_node.service
 ```
 # Somatosensory Control
+<img width="896" height="329" alt="Screenshot 2026-07-09 124113" src="https://github.com/user-attachments/assets/853ec4de-2b08-4504-aa63-d0c9329cb2bf" />
 
 This example enables JetAuto to recognize human body poses using MediaPipe and control the robot through body movements.
 
