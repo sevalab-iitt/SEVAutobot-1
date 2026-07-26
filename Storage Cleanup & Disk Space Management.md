@@ -25,6 +25,8 @@ The objective was to:
 ```bash
 df -h
 ```
+<img width="914" height="282" alt="image" src="https://github.com/user-attachments/assets/be8af6ec-baa1-4ea5-9fa7-a830ed445150" />
+
 
 Output:
 
@@ -72,6 +74,8 @@ Result:
 
 Approximately 500 MB recovered.
 
+<img width="910" height="566" alt="image" src="https://github.com/user-attachments/assets/375f02fb-c9fa-45b0-beab-f3f07b45a8f5" />
+
 ---
 
 # Step 2 – Inspect Disk Usage
@@ -81,6 +85,7 @@ Root filesystem usage:
 ```bash
 sudo du -xh --max-depth=1 / 2>/dev/null | sort -hr
 ```
+<img width="921" height="536" alt="image" src="https://github.com/user-attachments/assets/093d5a13-9e00-40f3-922f-77c4fa9388c1" />
 
 Output:
 
@@ -110,6 +115,10 @@ Command:
 ```bash
 du -xh --max-depth=1 /home/jetauto | sort -hr
 ```
+<img width="921" height="917" alt="image" src="https://github.com/user-attachments/assets/3082e9a8-cf9f-42ed-9329-112eebd20620" />
+
+<img width="793" height="886" alt="image" src="https://github.com/user-attachments/assets/f7171cf9-39ea-43c1-a2c5-4a8780780fba" />
+
 
 Output:
 
@@ -137,16 +146,13 @@ Command:
 ```bash
 rm -rf ~/.cache/*
 ```
+<img width="926" height="172" alt="image" src="https://github.com/user-attachments/assets/d0d969a4-676b-4961-b05b-32b757b9b711" />
 
 Purpose:
 
 Delete temporary application cache.
 
 Safe because applications recreate cache automatically.
-
-Recovered:
-
-Approximately 1.6 GB.
 
 ---
 
@@ -157,6 +163,9 @@ Command:
 ```bash
 du -sh ~/.ros/*
 ```
+<img width="906" height="922" alt="image" src="https://github.com/user-attachments/assets/2f1b0535-dd05-4532-b755-398629173ffe" />
+
+<img width="896" height="825" alt="image" src="https://github.com/user-attachments/assets/baf97457-9e03-4369-9ced-3c247e6f469e" />
 
 Output:
 
@@ -198,6 +207,7 @@ Command:
 ```bash
 sudo find / -type f -size +500M 2>/dev/null
 ```
+<img width="920" height="202" alt="image" src="https://github.com/user-attachments/assets/d66cf589-bfa2-4ed6-8394-19c1c4168601" />
 
 Output:
 
@@ -222,6 +232,8 @@ Command:
 ```bash
 rm ~/2026-06-16-19-13-01.bag
 ```
+<img width="937" height="114" alt="image" src="https://github.com/user-attachments/assets/ced4119d-80ba-4b9e-96e3-7e6b3f313302" />
+
 
 File Size:
 
@@ -242,6 +254,7 @@ Command:
 ```bash
 rm -rf ~/.nv/*
 ```
+<img width="633" height="33" alt="image" src="https://github.com/user-attachments/assets/e45c43cb-b7d7-40e0-9bff-e1a0f53a97a3" />
 
 Purpose:
 
@@ -262,6 +275,7 @@ Command:
 ```bash
 du -xh --max-depth=1 ~/jetauto_third_party | sort -hr
 ```
+<img width="923" height="341" alt="image" src="https://github.com/user-attachments/assets/a967e070-595f-4e99-b0f7-823d5ba1a5b3" />
 
 Output:
 
@@ -292,6 +306,7 @@ Command:
 ```bash
 du -xh --max-depth=1 ~/jetauto_third_party/ORB_SLAM3
 ```
+<img width="939" height="336" alt="image" src="https://github.com/user-attachments/assets/82321c13-1d49-44d6-a9ae-a6c9876edae2" />
 
 Output:
 
