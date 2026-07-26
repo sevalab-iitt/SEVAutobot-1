@@ -350,6 +350,8 @@ sudo du -xh --max-depth=1 /usr
 
 Output:
 
+<img width="929" height="419" alt="image" src="https://github.com/user-attachments/assets/d84d026d-47a7-4ed0-8a64-38979ad0de43" />
+
 ```text
 15G /usr
 
@@ -366,6 +368,9 @@ sudo du -xh --max-depth=1 /usr/local
 ```
 
 Output:
+
+<img width="904" height="453" alt="image" src="https://github.com/user-attachments/assets/a0a80d45-d6b5-4448-b551-b352ff12f050" />
+
 
 ```text
 4.6G /usr/local
@@ -398,6 +403,8 @@ sudo du -xh --max-depth=1 /var
 
 Output:
 
+<img width="923" height="591" alt="image" src="https://github.com/user-attachments/assets/8737b689-b0d7-48ae-9d8d-d5e73041a927" />
+
 ```text
 1.6G /var
 
@@ -426,6 +433,10 @@ Command:
 ```bash
 ls /var/cuda-repo-l4t-10-2-local
 ```
+
+<img width="917" height="931" alt="image" src="https://github.com/user-attachments/assets/c526b215-2c2c-4970-92d9-2039639a3672" />
+
+<img width="806" height="640" alt="image" src="https://github.com/user-attachments/assets/5ceaa2d2-7f0e-43c2-be04-d60d3e50e18f" />
 
 Result:
 
@@ -477,7 +488,7 @@ sudo rm -rf /var/visionworks-sfm-repo
 sudo rm -rf /var/visionworks-tracking-repo
 ```
 
-Recovered:
+Recover:
 
 Approximately 90 MB.
 
@@ -500,6 +511,8 @@ Filesystem      Size  Used Avail Use% Mounted on
 ```
 
 Result:
+
+<img width="925" height="291" alt="image" src="https://github.com/user-attachments/assets/a6bed2a8-88a0-48ba-b079-8dc88dfe8d17" />
 
 Before:
 
@@ -532,6 +545,9 @@ df -h
 ```
 
 Output:
+
+<img width="925" height="285" alt="image" src="https://github.com/user-attachments/assets/9647ecca-f4db-45ad-85af-8430becc0a2d" />
+
 
 ```text
 Filesystem      Size  Used Avail Use% Mounted on
