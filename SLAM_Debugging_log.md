@@ -445,3 +445,10 @@ jetauto@jetauto-desktop:~$ grep -R "lidar_app.launch" ~/jetauto_ws/src/jetauto_a
 - Always run bringup manually when systemd suppresses logs.
 - Duplicate ROS node names indicate the same launch file is started twice.
 - Search launch inclusions before editing node definitions.
+
+
+
+<img width="948" height="612" alt="image" src="https://github.com/user-attachments/assets/2bfd98c5-f8fa-4a2f-a303-0b1d3af14881" />
+
+<img width="1058" height="738" alt="image" src="https://github.com/user-attachments/assets/99b634c2-b2b8-4227-8f6c-7a01889060d3" />
+
