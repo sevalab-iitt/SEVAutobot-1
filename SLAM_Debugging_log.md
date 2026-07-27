@@ -452,3 +452,6 @@ jetauto@jetauto-desktop:~$ grep -R "lidar_app.launch" ~/jetauto_ws/src/jetauto_a
 
 <img width="1058" height="738" alt="image" src="https://github.com/user-attachments/assets/99b634c2-b2b8-4227-8f6c-7a01889060d3" />
 
+
+<img width="1047" height="256" alt="image" src="https://github.com/user-attachments/assets/4a1d6e48-40f7-41d0-a609-3d83a5687141" />
+
