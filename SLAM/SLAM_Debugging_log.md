@@ -1,4 +1,4 @@
-# 🤖 The JetAuto Chronicles: A SLAM Debugging Story
+# 🤖 The JetAuto Chronicles: A SLAM Debugging Story (Gmapping)
 
 > **Platform:** Jetson Nano · Ubuntu 18.04 · ROS Melodic · JetAuto Pro · G4 LiDAR · Astra Pro Plus
 >
