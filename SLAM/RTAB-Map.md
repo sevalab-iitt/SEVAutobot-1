@@ -399,6 +399,7 @@ jetauto_robot.launch      → Robot hardware and sensors
 - **Sensor conversion:** `depthimage_to_laserscan`
 - **Controller:** `slam_base` selects and launches the required SLAM pipeline.
 
+---
 
 ```
 jetauto@jetauto-desktop:~$ rostopic list | grep odom
