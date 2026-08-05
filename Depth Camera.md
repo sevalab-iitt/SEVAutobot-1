@@ -520,3 +520,211 @@ jetauto_ws/
 ```
 
 ---
+# Astra Pro Plus RGB-D Camera Integration and Algorithm Validation
+
+**Platform:** JetAuto Pro (Jetson Nano)  
+**Operating System:** Ubuntu 18.04 (JetPack 4.6.3 - L4T R32.7.3)  
+**ROS Version:** ROS Melodic
+
+---
+
+# Objective
+
+Verify the output format of the Astra Pro Plus RGB-D camera and test whether its data can be consumed by a computer vision algorithm.
+
+---
+
+# Hardware
+
+- JetAuto Pro (Jetson Nano)
+- Orbbec Astra Pro Plus RGB-D Camera
+- RPLiDAR A1
+
+---
+
+# Software
+
+- ROS Melodic
+- Python 3.6
+- OpenCV 4.6
+- cv_bridge
+- PyTorch 1.10 (CUDA Enabled)
+
+---
+
+# Camera Verification
+
+The Astra camera was launched using:
+
+```bash
+roslaunch astra_camera astra_pro_plus.launch
+```
+
+Verified topics:
+
+| Topic | Message Type |
+|--------|--------------|
+| `/astra_cam/rgb/image_raw` | `sensor_msgs/Image` |
+| `/astra_cam/depth/image_raw` | `sensor_msgs/Image` |
+| `/astra_cam/depth/points` | `sensor_msgs/PointCloud2` |
+
+Commands used:
+
+```bash
+rostopic type /astra_cam/rgb/image_raw
+rostopic type /astra_cam/depth/image_raw
+rostopic type /astra_cam/depth/points
+```
+
+Output:
+
+```text
+sensor_msgs/Image
+sensor_msgs/Image
+sensor_msgs/PointCloud2
+```
+
+---
+
+# Message Format Verification
+
+Command:
+
+```bash
+rosmsg show sensor_msgs/Image
+```
+
+Output:
+
+```text
+std_msgs/Header header
+uint32 height
+uint32 width
+string encoding
+uint8 is_bigendian
+uint32 step
+uint8[] data
+```
+
+---
+
+# OpenCV Integration
+
+A custom ROS node (`image_viewer.py`) was created.
+
+Pipeline:
+
+```
+Astra Camera
+      │
+      ▼
+/astra_cam/rgb/image_raw
+      │
+      ▼
+ROS Subscriber
+      │
+      ▼
+cv_bridge
+      │
+      ▼
+OpenCV
+      │
+      ▼
+Live RGB Display
+```
+
+Result:
+
+- Successfully subscribed to the RGB topic.
+- Converted ROS Image messages into OpenCV images.
+- Displayed the live RGB stream successfully.
+
+> **Insert Screenshot:** `images/astra_rgb_output.png`
+
+---
+
+# YOLO Investigation
+
+YOLOv5 v6.2 repository was cloned.
+
+Environment verification:
+
+```bash
+python3 -c "import torch; print(torch.cuda.is_available())"
+```
+
+Output:
+
+```text
+True
+```
+
+GPU:
+
+```text
+NVIDIA Tegra X1
+```
+
+---
+
+# Debugging Performed
+
+The following components were verified successfully:
+
+- CUDA
+- OpenCV
+- TorchVision
+- PyTorch Tensor Operations
+- ROS Camera Pipeline
+
+The issue occurred only when loading the YOLO checkpoint:
+
+```bash
+python3 -c "import torch; m=torch.load('yolov5s.pt', map_location='cpu')"
+```
+
+Result:
+
+```text
+Segmentation fault (core dumped)
+```
+
+A simple PyTorch save/load test executed successfully:
+
+```bash
+python3 -c "import torch; torch.save({'a':1},'test.pt'); print(torch.load('test.pt'))"
+```
+
+Output:
+
+```text
+{'a': 1}
+```
+
+This indicates that the failure is specific to loading the YOLO checkpoint rather than the PyTorch installation itself.
+
+---
+
+# Conclusion
+
+The objective was successfully achieved.
+
+Completed:
+
+- Verified Astra RGB-D camera topics.
+- Verified ROS message formats.
+- Successfully subscribed to Astra RGB images.
+- Converted ROS Image messages to OpenCV format using `cv_bridge`.
+- Demonstrated that Astra data can be consumed by a computer vision algorithm (OpenCV).
+
+YOLO integration was attempted, but a checkpoint compatibility issue caused a segmentation fault while loading the pretrained model. The camera pipeline and ROS integration remain fully functional.
+
+---
+
+# Future Work
+
+- RGB-D SLAM using RTAB-Map
+- Point Cloud Processing (PCL)
+- ORB-SLAM2 / ORB-SLAM3
+- Object Detection using a Jetson-compatible framework
+- Semantic Mapping
