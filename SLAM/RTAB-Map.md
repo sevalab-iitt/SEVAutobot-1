@@ -5,8 +5,7 @@
 **Platform:** Hiwonder JetAuto Pro (NVIDIA Jetson Nano)
 **ROS Distribution:** ROS Melodic
 **Operating System:** Ubuntu 18.04 LTS
-**Author:** Raj Majhi
-**Document Type:** Internship Technical Report
+
 
 ---
 
