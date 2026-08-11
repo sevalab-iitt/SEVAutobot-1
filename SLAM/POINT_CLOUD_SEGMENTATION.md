@@ -1105,3 +1105,68 @@ Euclidean Clustering
 Cluster Geometry
      ↓
 Gap Detection
+```
+---
+```
+PHASE 1
+RTAB-Map PointCloud2
+        ↓
+Python Point Reader
+        ↓
+Actual (X, Y, Z, RGB)
+        ↓
+Verify
+        │
+        ▼
+PHASE 2
+Remove Invalid Points
+        ↓
+Valid XYZ points
+        ↓
+Verify
+        │
+        ▼
+PHASE 3
+Downsampling
+        ↓
+Reduced point cloud
+        ↓
+Verify
+        │
+        ▼
+PHASE 4
+Euclidean Clustering
+        ↓
+Cluster 1
+Cluster 2
+Cluster 3
+...
+        │
+        ▼
+PHASE 5
+Cluster Geometry
+        ↓
+Centroid
+Bounding Box
+Dimensions
+        │
+        ▼
+PHASE 6
+Distance / Gap Detection
+        │
+        ▼
+PHASE 7
+Interactive 3D Viewer
+        │
+        ▼
+PHASE 8
+Compare
+DBSCAN
+Region Growing
+Supervoxels
+        │
+        ▼
+PHASE 9
+SAM + Depth
+```
+---
