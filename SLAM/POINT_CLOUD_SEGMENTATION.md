@@ -1170,3 +1170,195 @@ PHASE 9
 SAM + Depth
 ```
 ---
+cd ~/catkin_ws/src/pointcloud_segmentation/scripts
+nano pointcloud_reader.py (inside put this code initially)
+for reader used this code 
+```
+#!/usr/bin/env python
+
+import rospy
+import sensor_msgs.point_cloud2 as pc2
+from sensor_msgs.msg import PointCloud2
+
+
+class PointCloudReader:
+
+    def __init__(self):
+
+        self.subscriber = rospy.Subscriber(
+            "/jetauto_1/rtabmap/cloud_map",
+            PointCloud2,
+            self.pointcloud_callback,
+            queue_size=1
+        )
+
+        self.received = False
+
+    def pointcloud_callback(self, msg):
+
+        if self.received:
+            return
+
+        self.received = True
+
+        rospy.loginfo("Received PointCloud2")
+
+        print("\n========== POINT CLOUD INFO ==========")
+
+        print("Frame ID :", msg.header.frame_id)
+        print("Width    :", msg.width)
+        print("Height   :", msg.height)
+        print("Fields   :", [field.name for field in msg.fields])
+        print("Point step:", msg.point_step)
+        print("Row step  :", msg.row_step)
+        print("Dense     :", msg.is_dense)
+
+        print("\n========== FIRST 10 POINTS ==========")
+
+        count = 0
+
+        for point in pc2.read_points(
+                msg,
+                field_names=("x", "y", "z", "rgb"),
+                skip_nans=False):
+
+            print(
+                "Point {}: X={:.4f}, Y={:.4f}, Z={:.4f}, RGB={}".format(
+                    count,
+                    point[0],
+                    point[1],
+                    point[2],
+                    point[3]
+                )
+            )
+
+            count += 1
+
+            if count >= 10:
+                break
+
+        print("\n=====================================\n")
+
+
+def main():
+
+    rospy.init_node(
+        "pointcloud_reader",
+        anonymous=True
+    )
+
+    PointCloudReader()
+
+    rospy.spin()
+
+
+if __name__ == "__main__":
+    main()
+```
+phase 1 completed 
+
+<img width="954" height="817" alt="image" src="https://github.com/user-attachments/assets/0fcb97ca-a0c0-4b6b-8e82-bdc1bd3bb348" />
+---
+for phase 2 
+
+we have to make some changes as we are going to remove those invalid points that we intentionally let slide in.
+
+```
+#!/usr/bin/env python
+
+import rospy
+import sensor_msgs.point_cloud2 as pc2
+from sensor_msgs.msg import PointCloud2
+
+
+class PointCloudReader:
+
+    def __init__(self):
+
+        self.subscriber = rospy.Subscriber(
+            "/jetauto_1/rtabmap/cloud_map",
+            PointCloud2,
+            self.pointcloud_callback,
+            queue_size=1
+        )
+
+        self.received = False
+
+    def pointcloud_callback(self, msg):
+
+        if self.received:
+            return
+
+        self.received = True
+
+        rospy.loginfo("Received PointCloud2")
+
+         print("\n========== POINT CLOUD PROCESSING ==========")
+
+        total_points = 0
+        valid_points = 0
+        invalid_points = 0
+
+        sample_count = 0
+
+        for point in pc2.read_points(
+                msg,
+                field_names=("x", "y", "z", "rgb"),
+                skip_nans=False):
+
+            total_points += 1
+
+            x = point[0]
+            y = point[1]
+            z = point[2]
+            rgb = point[3]
+
+            # Check only XYZ for geometric validity
+            if not (
+                math.isfinite(x) and
+                math.isfinite(y) and
+                math.isfinite(z)
+            ):
+                invalid_points += 1
+                continue
+
+            valid_points += 1
+
+            if sample_count < 10:
+
+                print(
+                    "Valid Point {}: X={:.4f}, Y={:.4f}, Z={:.4f}, RGB={}".format(
+                        sample_count,
+                        x,
+                        y,
+                        z,
+                        rgb
+                    )
+                )
+
+                sample_count += 1
+
+        print("\n========== POINT STATISTICS ==========")
+
+        print("Total points   :", total_points)
+        print("Valid XYZ      :", valid_points)
+        print("Invalid XYZ    :", invalid_points)
+
+        print("======================================\n")
+
+def main():
+
+    rospy.init_node(
+        "pointcloud_reader",
+        anonymous=True
+    )
+
+    PointCloudReader()
+
+    rospy.spin()
+
+
+if __name__ == "__main__":
+    main()
+```
+       
