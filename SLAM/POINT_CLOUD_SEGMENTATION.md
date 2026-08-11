@@ -1289,6 +1289,7 @@ class PointCloudReader:
 
     def pointcloud_callback(self, msg):
 
+        # Process only the first received message
         if self.received:
             return
 
@@ -1296,7 +1297,30 @@ class PointCloudReader:
 
         rospy.loginfo("Received PointCloud2")
 
-         print("\n========== POINT CLOUD PROCESSING ==========")
+        # -----------------------------------------
+        # Point Cloud Information
+        # -----------------------------------------
+
+        print("\n========== POINT CLOUD INFO ==========")
+
+        print("Frame ID :", msg.header.frame_id)
+        print("Width    :", msg.width)
+        print("Height   :", msg.height)
+
+        print(
+            "Fields   :",
+            [field.name for field in msg.fields]
+        )
+
+        print("Point step:", msg.point_step)
+        print("Row step  :", msg.row_step)
+        print("Dense     :", msg.is_dense)
+
+        # -----------------------------------------
+        # Point Cloud Processing
+        # -----------------------------------------
+
+        print("\n========== POINT CLOUD PROCESSING ==========")
 
         total_points = 0
         valid_points = 0
@@ -1304,6 +1328,7 @@ class PointCloudReader:
 
         sample_count = 0
 
+        # Read individual points from PointCloud2
         for point in pc2.read_points(
                 msg,
                 field_names=("x", "y", "z", "rgb"),
@@ -1316,21 +1341,34 @@ class PointCloudReader:
             z = point[2]
             rgb = point[3]
 
-            # Check only XYZ for geometric validity
-            if not (
-                math.isfinite(x) and
-                math.isfinite(y) and
-                math.isfinite(z)
+            # -----------------------------------------
+            # Check XYZ validity
+            #
+            # Python 2.7 does not have math.isfinite().
+            # Therefore check NaN and infinity separately.
+            # -----------------------------------------
+
+            if (
+                math.isnan(x) or math.isinf(x) or
+                math.isnan(y) or math.isinf(y) or
+                math.isnan(z) or math.isinf(z)
             ):
+
                 invalid_points += 1
                 continue
 
+            # Point has valid XYZ
             valid_points += 1
 
+            # Print only first 10 valid points
             if sample_count < 10:
 
                 print(
-                    "Valid Point {}: X={:.4f}, Y={:.4f}, Z={:.4f}, RGB={}".format(
+                    "Valid Point {}: "
+                    "X={:.4f}, "
+                    "Y={:.4f}, "
+                    "Z={:.4f}, "
+                    "RGB={}".format(
                         sample_count,
                         x,
                         y,
@@ -1341,6 +1379,10 @@ class PointCloudReader:
 
                 sample_count += 1
 
+        # -----------------------------------------
+        # Statistics
+        # -----------------------------------------
+
         print("\n========== POINT STATISTICS ==========")
 
         print("Total points   :", total_points)
@@ -1349,19 +1391,47 @@ class PointCloudReader:
 
         print("======================================\n")
 
+
 def main():
 
+    # Initialize ROS node
     rospy.init_node(
         "pointcloud_reader",
         anonymous=True
     )
 
+    # Create subscriber
     PointCloudReader()
 
+    # Keep node running
     rospy.spin()
 
 
 if __name__ == "__main__":
     main()
 ```
-       
+Ctrl + O
+Enter
+Ctrl + X
+
+run it using 
+
+chmod +x ~/catkin_ws/src/pointcloud_segmentation/scripts/pointcloud_reader.py
+source ~/catkin_ws/devel/setup.bash
+rosrun pointcloud_segmentation pointcloud_reader.py
+
+<img width="930" height="670" alt="image" src="https://github.com/user-attachments/assets/0feff709-d6a9-41f1-9670-e09d4943c9a7" />
+
+phase 2 is completed 
+
+So for this particular RTAB-Map cloud:
+
+818 points received
+818 have valid X/Y/Z
+0 invalid XYZ points
+RGB = nan is present, but we're correctly not rejecting points because of RGB, since we're doing geometric segmentation.
+---
+
+phase 3 - Downsampling 
+
+
