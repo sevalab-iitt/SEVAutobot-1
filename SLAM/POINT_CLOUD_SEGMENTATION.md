@@ -1263,10 +1263,13 @@ for phase 2
 
 we have to make some changes as we are going to remove those invalid points that we intentionally let slide in.
 
+nano ~/catkin_ws/src/pointcloud_segmentation/scripts/pointcloud_reader.py
+
 ```
 #!/usr/bin/env python
 
 import rospy
+import math
 import sensor_msgs.point_cloud2 as pc2
 from sensor_msgs.msg import PointCloud2
 
