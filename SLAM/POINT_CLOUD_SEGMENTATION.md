@@ -1433,5 +1433,1016 @@ RGB = nan is present, but we're correctly not rejecting points because of RGB, s
 ---
 
 phase 3 - Downsampling 
+need to change the code again
+nano ~/catkin_ws/src/pointcloud_segmentation/scripts/pointcloud_reader.py
+
+```
+#!/usr/bin/env python
+
+import rospy
+import math
+import numpy as np
+
+import sensor_msgs.point_cloud2 as pc2
+from sensor_msgs.msg import PointCloud2
+
+
+class PointCloudReader:
+
+    def __init__(self):
+
+        self.subscriber = rospy.Subscriber(
+            "/jetauto_1/camera/depth/points",
+            PointCloud2,
+            self.pointcloud_callback,
+            queue_size=1
+        )
+
+        self.received = False
+
+    def voxel_downsample(self, points, voxel_size):
+
+        """
+        Voxel-grid downsampling.
+
+        Points are grouped into 3D voxels.
+        One representative point (centroid) is
+        calculated for each occupied voxel.
+        """
+
+        if len(points) == 0:
+            return points
+
+        # Calculate voxel coordinates
+        voxel_indices = np.floor(
+            points / voxel_size
+        ).astype(np.int32)
+
+        # Find unique voxels
+        unique_voxels, inverse_indices = np.unique(
+            voxel_indices,
+            axis=0,
+            return_inverse=True
+        )
+
+        # Allocate array for downsampled points
+        downsampled = np.zeros(
+            (len(unique_voxels), 3),
+            dtype=np.float32
+        )
+
+        # Calculate centroid of each voxel
+        for i in range(len(unique_voxels)):
+
+            voxel_points = points[
+                inverse_indices == i
+            ]
+
+            downsampled[i] = np.mean(
+                voxel_points,
+                axis=0
+            )
+
+        return downsampled
+
+    def pointcloud_callback(self, msg):
+
+        # Process only the first received cloud
+        if self.received:
+            return
+
+        self.received = True
+
+        rospy.loginfo(
+            "Received Astra PointCloud2"
+        )
+
+        # ==================================================
+        # POINT CLOUD INFORMATION
+        # ==================================================
+
+        print("\n========== POINT CLOUD INFO ==========")
+
+        print(
+            "Topic    : /jetauto_1/camera/depth/points"
+        )
+
+        print(
+            "Frame ID :",
+            msg.header.frame_id
+        )
+
+        print(
+            "Width    :",
+            msg.width
+        )
+
+        print(
+            "Height   :",
+            msg.height
+        )
+
+        print(
+            "Fields   :",
+            [field.name for field in msg.fields]
+        )
+
+        print(
+            "Point step:",
+            msg.point_step
+        )
+
+        print(
+            "Row step  :",
+            msg.row_step
+        )
+
+        print(
+            "Dense     :",
+            msg.is_dense
+        )
+
+        # ==================================================
+        # READ AND VALIDATE POINTS
+        # ==================================================
+
+        print(
+            "\n========== READING POINTS =========="
+        )
+
+        points = []
+
+        total_points = 0
+        invalid_points = 0
+
+        for point in pc2.read_points(
+                msg,
+                field_names=("x", "y", "z"),
+                skip_nans=False):
+
+            total_points += 1
+
+            x = point[0]
+            y = point[1]
+            z = point[2]
+
+            # Python 2.7 compatible validity check
+            if (
+                math.isnan(x) or math.isinf(x) or
+                math.isnan(y) or math.isinf(y) or
+                math.isnan(z) or math.isinf(z)
+            ):
+                invalid_points += 1
+                continue
+
+            points.append(
+                [x, y, z]
+            )
+
+        # ==================================================
+        # NUMPY ARRAY
+        # ==================================================
+
+        points = np.array(
+            points,
+            dtype=np.float32
+        )
+
+        valid_points = len(points)
+
+        print(
+            "Total points   :",
+            total_points
+        )
+
+        print(
+            "Valid XYZ      :",
+            valid_points
+        )
+
+        print(
+            "Invalid XYZ    :",
+            invalid_points
+        )
+
+        if valid_points == 0:
+
+            rospy.logwarn(
+                "No valid XYZ points were found."
+            )
+
+            return
+
+        # ==================================================
+        # ORIGINAL CLOUD INFORMATION
+        # ==================================================
+
+        print(
+            "\n========== ORIGINAL CLOUD =========="
+        )
+
+        print(
+            "Array shape :",
+            points.shape
+        )
+
+        print(
+            "Array dtype :",
+            points.dtype
+        )
+
+        # ==================================================
+        # ORIGINAL BOUNDS
+        # ==================================================
+
+        min_x = np.min(points[:, 0])
+        max_x = np.max(points[:, 0])
+
+        min_y = np.min(points[:, 1])
+        max_y = np.max(points[:, 1])
+
+        min_z = np.min(points[:, 2])
+        max_z = np.max(points[:, 2])
+
+        print(
+            "X range : {:.4f} m".format(
+                max_x - min_x
+            )
+        )
+
+        print(
+            "Y range : {:.4f} m".format(
+                max_y - min_y
+            )
+        )
+
+        print(
+            "Z range : {:.4f} m".format(
+                max_z - min_z
+            )
+        )
+
+        # ==================================================
+        # VOXEL DOWNSAMPLING
+        # ==================================================
+
+        voxel_size = 0.02
+
+        print(
+            "\n========== VOXEL DOWNSAMPLING =========="
+        )
+
+        print(
+            "Voxel size : {:.3f} m".format(
+                voxel_size
+            )
+        )
+
+        downsampled_points = self.voxel_downsample(
+            points,
+            voxel_size
+        )
+
+        downsampled_count = len(
+            downsampled_points
+        )
+
+        # ==================================================
+        # DOWNSAMPLING RESULTS
+        # ==================================================
+
+        print(
+            "Original valid points :",
+            valid_points
+        )
+
+        print(
+            "Downsampled points    :",
+            downsampled_count
+        )
+
+        reduction = (
+            1.0 -
+            float(downsampled_count) /
+            float(valid_points)
+        ) * 100.0
+
+        print(
+            "Point reduction       : {:.2f}%".format(
+                reduction
+            )
+        )
+
+        # ==================================================
+        # DOWNSAMPLED BOUNDS
+        # ==================================================
+
+        print(
+            "\n========== DOWNSAMPLED BOUNDS =========="
+        )
+
+        down_min_x = np.min(
+            downsampled_points[:, 0]
+        )
+
+        down_max_x = np.max(
+            downsampled_points[:, 0]
+        )
+
+        down_min_y = np.min(
+            downsampled_points[:, 1]
+        )
+
+        down_max_y = np.max(
+            downsampled_points[:, 1]
+        )
+
+        down_min_z = np.min(
+            downsampled_points[:, 2]
+        )
+
+        down_max_z = np.max(
+            downsampled_points[:, 2]
+        )
+
+        print(
+            "Minimum X : {:.4f} m".format(
+                down_min_x
+            )
+        )
+
+        print(
+            "Maximum X : {:.4f} m".format(
+                down_max_x
+            )
+        )
+
+        print(
+            "Minimum Y : {:.4f} m".format(
+                down_min_y
+            )
+        )
+
+        print(
+            "Maximum Y : {:.4f} m".format(
+                down_max_y
+            )
+        )
+
+        print(
+            "Minimum Z : {:.4f} m".format(
+                down_min_z
+            )
+        )
+
+        print(
+            "Maximum Z : {:.4f} m".format(
+                down_max_z
+            )
+        )
+
+        # ==================================================
+        # SAMPLE DOWNSAMPLED POINTS
+        # ==================================================
+
+        print(
+            "\n========== DOWNSAMPLED SAMPLES =========="
+        )
+
+        sample_count = min(
+            10,
+            downsampled_count
+        )
+
+        for i in range(sample_count):
+
+            print(
+                "Point {}: X={:.4f}, "
+                "Y={:.4f}, "
+                "Z={:.4f}".format(
+                    i,
+                    downsampled_points[i][0],
+                    downsampled_points[i][1],
+                    downsampled_points[i][2]
+                )
+            )
+
+        print(
+            "\n==========================================\n"
+        )
+
+
+def main():
+
+    rospy.init_node(
+        "pointcloud_reader",
+        anonymous=True
+    )
+
+    PointCloudReader()
+
+    rospy.spin()
+
+
+if __name__ == "__main__":
+    main()
+```
+```
+jetauto@jetauto-desktop:~/catkin_ws/src/pointcloud_segmentation/scripts$ rosrun pointcloud_segmentation pointcloud_reader.py
+[INFO] [1786705846.004574]: Received Astra PointCloud2
+
+========== POINT CLOUD INFO ==========
+Topic    : /jetauto_1/camera/depth/points
+('Frame ID :', 'camera_rgb_optical_frame')
+('Width    :', 640)
+('Height   :', 480)
+('Fields   :', ['x', 'y', 'z'])
+('Point step:', 16)
+('Row step  :', 10240)
+('Dense     :', False)
+
+========== READING POINTS ==========
+('Total points   :', 307200)
+('Valid XYZ      :', 252836)
+('Invalid XYZ    :', 54364)
+
+========== ORIGINAL CLOUD ==========
+('Array shape :', (252836, 3))
+('Array dtype :', dtype('float32'))
+X range : 1.5394 m
+Y range : 1.4364 m
+Z range : 1.3180 m
+
+========== VOXEL DOWNSAMPLING ==========
+Voxel size : 0.020 m
+('Original valid points :', 252836)
+('Downsampled points    :', 7229)
+Point reduction       : 97.14%
+
+========== DOWNSAMPLED BOUNDS ==========
+Minimum X : -1.0938 m
+Maximum X : 0.4403 m
+Minimum Y : -0.6618 m
+Maximum Y : 0.7667 m
+Minimum Z : 0.8525 m
+Maximum Z : 2.1660 m
+
+========== DOWNSAMPLED SAMPLES ==========
+Point 0: X=0.0018, Y=0.0044, Z=1.5390
+Point 1: X=0.0100, Y=0.0099, Z=1.5460
+Point 2: X=0.0099, Y=0.0299, Z=1.5460
+Point 3: X=0.0053, Y=0.0557, Z=1.5390
+Point 4: X=0.0110, Y=0.0485, Z=1.5460
+Point 5: X=0.0033, Y=0.0686, Z=1.5390
+Point 6: X=0.0125, Y=0.0706, Z=1.5460
+Point 7: X=0.0178, Y=0.0951, Z=1.5390
+Point 8: X=0.0097, Y=0.0901, Z=1.5460
+Point 9: X=0.0079, Y=0.1145, Z=1.5390
+
+==========================================
+
+```
+---
+
+new code for clustering 
+
+```
+#!/usr/bin/env python
+
+import rospy
+import math
+import numpy as np
+
+import sensor_msgs.point_cloud2 as pc2
+from sensor_msgs.msg import PointCloud2
+
+from sklearn.neighbors import NearestNeighbors
+
+
+class PointCloudSegmentation:
+
+    def __init__(self):
+
+        self.subscriber = rospy.Subscriber(
+            "/jetauto_1/camera/depth/points",
+            PointCloud2,
+            self.pointcloud_callback,
+            queue_size=1
+        )
+
+        self.received = False
+
+        # ==============================================
+        # PARAMETERS
+        # ==============================================
+
+        self.voxel_size = 0.02
+
+        self.cluster_tolerance = 0.05
+
+        self.min_cluster_size = 20
+
+        self.max_cluster_size = 5000
+
+    # ==================================================
+    # VOXEL DOWNSAMPLING
+    # ==================================================
+
+    def voxel_downsample(self, points):
+
+        if len(points) == 0:
+            return points
+
+        voxel_indices = np.floor(
+            points / self.voxel_size
+        ).astype(np.int32)
+
+        unique_voxels, inverse_indices = np.unique(
+            voxel_indices,
+            axis=0,
+            return_inverse=True
+        )
+
+        downsampled = np.zeros(
+            (len(unique_voxels), 3),
+            dtype=np.float32
+        )
+
+        for i in range(len(unique_voxels)):
+
+            voxel_points = points[
+                inverse_indices == i
+            ]
+
+            downsampled[i] = np.mean(
+                voxel_points,
+                axis=0
+            )
+
+        return downsampled
+
+    # ==================================================
+    # EUCLIDEAN CLUSTERING
+    # ==================================================
+
+    def euclidean_clustering(self, points):
+
+        number_of_points = len(points)
+
+        if number_of_points == 0:
+            return []
+
+        print(
+            "\n========== NEAREST NEIGHBOR SEARCH =========="
+        )
+
+        print(
+            "Number of points :",
+            number_of_points
+        )
+
+        print(
+            "Cluster tolerance : {:.3f} m".format(
+                self.cluster_tolerance
+            )
+        )
+
+        # ----------------------------------------------
+        # Build nearest-neighbor search structure
+        # ----------------------------------------------
+
+        neighbors_model = NearestNeighbors(
+            radius=self.cluster_tolerance,
+            algorithm="kd_tree"
+        )
+
+        neighbors_model.fit(points)
+
+        # Find neighbors within tolerance
+        neighbor_indices = neighbors_model.radius_neighbors(
+            points,
+            return_distance=False
+        )
+
+        # ----------------------------------------------
+        # Track visited points
+        # ----------------------------------------------
+
+        visited = np.zeros(
+            number_of_points,
+            dtype=np.bool
+        )
+
+        clusters = []
+
+        # ----------------------------------------------
+        # Region expansion
+        # ----------------------------------------------
+
+        for point_index in range(number_of_points):
+
+            if visited[point_index]:
+                continue
+
+            # Start a new cluster
+            cluster = []
+
+            queue = [point_index]
+
+            visited[point_index] = True
+
+            while len(queue) > 0:
+
+                current_index = queue.pop()
+
+                cluster.append(current_index)
+
+                # Check all neighboring points
+                for neighbor_index in neighbor_indices[
+                        current_index]:
+
+                    neighbor_index = int(
+                        neighbor_index
+                    )
+
+                    if not visited[neighbor_index]:
+
+                        visited[neighbor_index] = True
+
+                        queue.append(
+                            neighbor_index
+                        )
+
+            cluster_size = len(cluster)
+
+            # ------------------------------------------
+            # Apply cluster size limits
+            # ------------------------------------------
+
+            if (
+                cluster_size >= self.min_cluster_size
+                and
+                cluster_size <= self.max_cluster_size
+            ):
+
+                clusters.append(cluster)
+
+        return clusters
+
+    # ==================================================
+    # POINT CLOUD CALLBACK
+    # ==================================================
+
+    def pointcloud_callback(self, msg):
+
+        if self.received:
+            return
+
+        self.received = True
+
+        rospy.loginfo(
+            "Received Astra PointCloud2"
+        )
+
+        # ==============================================
+        # POINT CLOUD INFORMATION
+        # ==============================================
+
+        print(
+            "\n========== POINT CLOUD INFO =========="
+        )
+
+        print(
+            "Topic    : /jetauto_1/camera/depth/points"
+        )
+
+        print(
+            "Frame ID :",
+            msg.header.frame_id
+        )
+
+        print(
+            "Width    :",
+            msg.width
+        )
+
+        print(
+            "Height   :",
+            msg.height
+        )
+
+        print(
+            "Fields   :",
+            [field.name for field in msg.fields]
+        )
+
+        print(
+            "Point step:",
+            msg.point_step
+        )
+
+        print(
+            "Row step  :",
+            msg.row_step
+        )
+
+        print(
+            "Dense     :",
+            msg.is_dense
+        )
+
+        # ==============================================
+        # READ VALID XYZ POINTS
+        # ==============================================
+
+        print(
+            "\n========== READING POINTS =========="
+        )
+
+        points = []
+
+        total_points = 0
+        invalid_points = 0
+
+        for point in pc2.read_points(
+                msg,
+                field_names=("x", "y", "z"),
+                skip_nans=False):
+
+            total_points += 1
+
+            x = point[0]
+            y = point[1]
+            z = point[2]
+
+            if (
+                math.isnan(x) or math.isinf(x) or
+                math.isnan(y) or math.isinf(y) or
+                math.isnan(z) or math.isinf(z)
+            ):
+
+                invalid_points += 1
+
+                continue
+
+            points.append(
+                [x, y, z]
+            )
+
+        points = np.array(
+            points,
+            dtype=np.float32
+        )
+
+        valid_points = len(points)
+
+        print(
+            "Total points   :",
+            total_points
+        )
+
+        print(
+            "Valid XYZ      :",
+            valid_points
+        )
+
+        print(
+            "Invalid XYZ    :",
+            invalid_points
+        )
+
+        if valid_points == 0:
+
+            rospy.logwarn(
+                "No valid XYZ points found."
+            )
+
+            return
+
+        # ==============================================
+        # DOWNSAMPLING
+        # ==============================================
+
+        print(
+            "\n========== VOXEL DOWNSAMPLING =========="
+        )
+
+        print(
+            "Voxel size : {:.3f} m".format(
+                self.voxel_size
+            )
+        )
+
+        downsampled_points = self.voxel_downsample(
+            points
+        )
+
+        downsampled_count = len(
+            downsampled_points
+        )
+
+        reduction = (
+            1.0 -
+            float(downsampled_count) /
+            float(valid_points)
+        ) * 100.0
+
+        print(
+            "Original valid points :",
+            valid_points
+        )
+
+        print(
+            "Downsampled points    :",
+            downsampled_count
+        )
+
+        print(
+            "Point reduction       : {:.2f}%".format(
+                reduction
+            )
+        )
+
+        # ==============================================
+        # EUCLIDEAN CLUSTERING
+        # ==============================================
+
+        print(
+            "\n========== EUCLIDEAN CLUSTERING =========="
+        )
+
+        print(
+            "Cluster tolerance : {:.3f} m".format(
+                self.cluster_tolerance
+            )
+        )
+
+        print(
+            "Minimum cluster size :",
+            self.min_cluster_size
+        )
+
+        print(
+            "Maximum cluster size :",
+            self.max_cluster_size
+        )
+
+        clusters = self.euclidean_clustering(
+            downsampled_points
+        )
+
+        # ==============================================
+        # CLUSTER RESULTS
+        # ==============================================
+
+        print(
+            "\n========== CLUSTER RESULTS =========="
+        )
+
+        print(
+            "Number of clusters :",
+            len(clusters)
+        )
+
+        clustered_points = 0
+
+        for i, cluster in enumerate(clusters):
+
+            cluster_size = len(cluster)
+
+            clustered_points += cluster_size
+
+            print(
+                "Cluster {:3d} : {:5d} points".format(
+                    i + 1,
+                    cluster_size
+                )
+            )
+
+        noise_points = (
+            downsampled_count -
+            clustered_points
+        )
+
+        print(
+            "\nClustered points :",
+            clustered_points
+        )
+
+        print(
+            "Noise/unclustered:",
+            noise_points
+        )
+
+        # ==============================================
+        # CLUSTER SIZE SUMMARY
+        # ==============================================
+
+        if len(clusters) > 0:
+
+            cluster_sizes = [
+                len(cluster)
+                for cluster in clusters
+            ]
+
+            print(
+                "\n========== CLUSTER SIZE SUMMARY =========="
+            )
+
+            print(
+                "Largest cluster :",
+                max(cluster_sizes)
+            )
+
+            print(
+                "Smallest cluster:",
+                min(cluster_sizes)
+            )
+
+            print(
+                "Average cluster : {:.2f}".format(
+                    np.mean(cluster_sizes)
+                )
+            )
+
+        print(
+            "\n============================================\n"
+        )
+
+
+def main():
+
+    rospy.init_node(
+        "pointcloud_segmentation",
+        anonymous=True
+    )
+
+    PointCloudSegmentation()
+
+    rospy.spin()
+
+
+if __name__ == "__main__":
+    main()
+```
+chmod +x ~/catkin_ws/src/pointcloud_segmentation/scripts/pointcloud_reader.py
+source ~/catkin_ws/devel/setup.bash
+rosrun pointcloud_segmentation pointcloud_reader.py
+
+```
+[INFO] [1786707714.537116]: Received Astra PointCloud2
+
+========== POINT CLOUD INFO ==========
+Topic    : /jetauto_1/camera/depth/points
+('Frame ID :', 'camera_rgb_optical_frame')
+('Width    :', 640)
+('Height   :', 480)
+('Fields   :', ['x', 'y', 'z'])
+('Point step:', 16)
+('Row step  :', 10240)
+('Dense     :', False)
+
+========== READING POINTS ==========
+('Total points   :', 307200)
+('Valid XYZ      :', 252648)
+('Invalid XYZ    :', 54552)
+
+========== VOXEL DOWNSAMPLING ==========
+Voxel size : 0.020 m
+('Original valid points :', 252648)
+('Downsampled points    :', 7079)
+Point reduction       : 97.20%
+
+========== EUCLIDEAN CLUSTERING ==========
+Cluster tolerance : 0.050 m
+('Minimum cluster size :', 20)
+('Maximum cluster size :', 5000)
+
+========== NEAREST NEIGHBOR SEARCH ==========
+('Number of points :', 7079)
+Cluster tolerance : 0.050 m
+
+========== CLUSTER RESULTS ==========
+('Number of clusters :', 9)
+Cluster   1 :  3912 points
+Cluster   2 :  1783 points
+Cluster   3 :   184 points
+Cluster   4 :   286 points
+Cluster   5 :   196 points
+Cluster   6 :   194 points
+Cluster   7 :   206 points
+Cluster   8 :   218 points
+Cluster   9 :    76 points
+('\nClustered points :', 7055)
+('Noise/unclustered:', 24)
+
+========== CLUSTER SIZE SUMMARY ==========
+('Largest cluster :', 3912)
+('Smallest cluster:', 76)
+Average cluster : 783.89
+
+============================================
+```
+
 
 
