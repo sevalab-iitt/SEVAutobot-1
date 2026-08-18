@@ -1,0 +1,36 @@
+<?xml version="1.0"?>
+<launch>
+
+  <!-- ============================================================
+       lidar_basic_obstacle_avoidance.launch
+       Brings up everything needed for autonomous obstacle avoidance
+       on JetAuto Pro in ONE command:
+         1) jetauto_controller (motor driver)
+         2) A1 LiDAR driver
+         3) static tf: map -> lidar_frame
+         4) lidar_basic_obstacle_avoidance.py (the autonomous avoidance node)
+
+       Usage:
+         roslaunch jetauto_peripherals lidar_basic_obstacle_avoidance.launch
+
+       Pause / Resume (works from ANY terminal - local screen or SSH,
+       no keyboard capture / xterm required):
+         rostopic pub /auto_explore/pause std_msgs/Bool "data: true"   # pause
+         rostopic pub /auto_explore/pause std_msgs/Bool "data: false"  # resume
+       ============================================================ -->
+
+  <!-- 1) Motor controller -->
+  <include file="$(find jetauto_controller)/launch/jetauto_controller.launch" />
+
+  <!-- 2) A1 LiDAR driver -->
+  <include file="$(find jetauto_peripherals)/launch/lidar.launch" />
+
+  <!-- 3) Static transform: map -> lidar_frame -->
+  <node pkg="tf" type="static_transform_publisher" name="map_to_lidar_tf"
+        args="0 0 0 0 0 0 map lidar_frame 100" />
+
+  <!-- 4) Autonomous obstacle avoidance node -->
+  <node pkg="jetauto_peripherals" type="lidar_basic_obstacle_avoidance.py" name="lidar_basic_obstacle_avoidance"
+      output="screen" />
+
+</launch>
