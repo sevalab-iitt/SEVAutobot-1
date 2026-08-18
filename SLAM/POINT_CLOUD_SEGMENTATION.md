@@ -1,2448 +1,663 @@
-# 3D Point Cloud Segmentation and Object Separation
+# JetAuto 3D Point Cloud Segmentation — Project Documentation
 
-## 1. Problem Statement
+## 1. Overview
 
-The JetAuto robot uses an **Orbbec Astra Pro Plus RGB-D camera** and RTAB-Map to construct a 3D representation of its environment.
+This project builds a 3D point-cloud processing and segmentation pipeline for the JetAuto robotics platform. The robot uses an **Orbbec Astra Pro Plus RGB-D camera** together with **RTAB-Map** to construct a 3D representation of its environment, but the raw point cloud produced by this pipeline does not distinguish between separate physical objects. If a chair and a table are both in view, their points are mixed together with no indication of which points belong to which object.
 
-Currently, the system can generate a point cloud containing 3D points represented by:
-
-- X coordinate
-- Y coordinate
-- Z coordinate
-- RGB information (when available)
-
-However, the raw point cloud does not inherently distinguish between different physical objects.
-
-For example, if a chair and a table are present in the environment, the point cloud may contain points belonging to both objects without explicitly identifying them as separate entities.
-
-The objective of this project is to develop a **3D point-cloud segmentation system** that can:
+The goal of this project is to take that raw point cloud and turn it into a set of clearly separated, geometrically described objects. Specifically, the system should:
 
 1. Separate physically distinct objects into different clusters.
 2. Assign a unique ID to each detected cluster.
-3. Determine the 3D coordinates of the points belonging to each cluster.
+3. Determine the 3D coordinates of the points in each cluster.
 4. Calculate the centroid and bounding box of each cluster.
 5. Measure the distance between different objects.
-6. Detect gaps/free space between objects.
+6. Detect gaps or free space between objects.
 7. Provide information that can later be used for navigation.
-8. Provide an interactive 3D visualization tool where individual points and segmented objects can be inspected.
+8. Provide an interactive 3D visualization tool for inspecting individual points and segmented objects.
 
-Semantic identification such as:
+At this stage, the project is **not** concerned with semantic labels such as "this is a chair." The goal is purely geometric: to establish that "these points belong to Object 1, these points belong to Object 2, and there is a measurable gap between them." Semantic identification can be added later.
 
-> "This object is a chair."
-
-is **not initially required**.
-
-The initial objective is geometric understanding:
-
-> "These points belong to Object 1, these points belong to Object 2, and there is a measurable gap between them."
-
----
-
-# 2. Current System
-
-The current robotics pipeline is:
+### Target Pipeline
 
 ```text
 Orbbec Astra Pro Plus
-        |
-        v
-   RGB + Depth
-        |
-        v
-      ROS
-        |
-        v
+        │
+        ▼
+    RGB + Depth
+        │
+        ▼
+        ROS
+        │
+        ▼
     RTAB-Map
-        |
-        v
-    Point Cloud
-        |
-        v
- Point Cloud Segmentation
-        |
-        v
- Object Clusters
-        |
-        v
- Object Geometry
-        |
-        v
- Navigation
-
-<img width="450" height="660" alt="image" src="https://github.com/user-attachments/assets/e1232f39-12f5-46a9-b397-55f9c614f3a7" />
-
-<img width="616" height="86" alt="image" src="https://github.com/user-attachments/assets/5c474089-649d-4b6d-92af-b100772c311f" />
-
+        │
+        ▼
+   Point Cloud
+        │
+        ▼
+Point Cloud Segmentation
+        │
+        ▼
+  Object Clusters
+        │
+        ▼
+  Object Geometry
+        │
+        ▼
+   Navigation
 ```
-```
-jetauto@jetauto-desktop:~$ rostopic list | grep astra
-/astra_cam/astra_cam_nodelet_manager/bond
-/astra_cam/astraplus/parameter_descriptions
-/astra_cam/astraplus/parameter_updates
-/astra_cam/depth/camera_info
-/astra_cam/depth/image
-/astra_cam/depth/image/compressed
-/astra_cam/depth/image/compressed/parameter_descriptions
-/astra_cam/depth/image/compressed/parameter_updates
-/astra_cam/depth/image/compressedDepth
-/astra_cam/depth/image/compressedDepth/parameter_descriptions
-/astra_cam/depth/image/compressedDepth/parameter_updates
-/astra_cam/depth/image/theora
-/astra_cam/depth/image/theora/parameter_descriptions
-/astra_cam/depth/image/theora/parameter_updates
-/astra_cam/depth/image_raw
-/astra_cam/depth/image_raw/compressed
-/astra_cam/depth/image_raw/compressed/parameter_descriptions
-/astra_cam/depth/image_raw/compressed/parameter_updates
-/astra_cam/depth/image_raw/compressedDepth
-/astra_cam/depth/image_raw/compressedDepth/parameter_descriptions
-/astra_cam/depth/image_raw/compressedDepth/parameter_updates
-/astra_cam/depth/image_raw/theora
-/astra_cam/depth/image_raw/theora/parameter_descriptions
-/astra_cam/depth/image_raw/theora/parameter_updates
-/astra_cam/depth/image_rect
-/astra_cam/depth/image_rect/compressed
-/astra_cam/depth/image_rect/compressed/parameter_descriptions
-/astra_cam/depth/image_rect/compressed/parameter_updates
-/astra_cam/depth/image_rect/compressedDepth
-/astra_cam/depth/image_rect/compressedDepth/parameter_descriptions
-/astra_cam/depth/image_rect/compressedDepth/parameter_updates
-/astra_cam/depth/image_rect/theora
-/astra_cam/depth/image_rect/theora/parameter_descriptions
-/astra_cam/depth/image_rect/theora/parameter_updates
-/astra_cam/depth/image_rect_raw
-/astra_cam/depth/image_rect_raw/compressed
-/astra_cam/depth/image_rect_raw/compressed/parameter_descriptions
-/astra_cam/depth/image_rect_raw/compressed/parameter_updates
-/astra_cam/depth/image_rect_raw/compressedDepth
-/astra_cam/depth/image_rect_raw/compressedDepth/parameter_descriptions
-/astra_cam/depth/image_rect_raw/compressedDepth/parameter_updates
-/astra_cam/depth/image_rect_raw/theora
-/astra_cam/depth/image_rect_raw/theora/parameter_descriptions
-/astra_cam/depth/image_rect_raw/theora/parameter_updates
+
+---
+
+## 2. Verifying the Point Cloud Data
+
+Before writing any processing code, the actual `sensor_msgs/PointCloud2` messages produced by the Astra camera and by RTAB-Map were inspected directly on the robot. This ensured that the pipeline was built against the real message structure rather than assumptions.
+
+### 2.1 Available Topics
+
+Running `rostopic list | grep astra` confirmed that the Astra camera publishes a large number of topics, including two point-cloud topics of interest:
+
+```text
 /astra_cam/depth/points
-/astra_cam/depth_rectify_depth/parameter_descriptions
-/astra_cam/depth_rectify_depth/parameter_updates
-/astra_cam/depth_registered/camera_info
-/astra_cam/depth_registered/hw_registered/image_rect
-/astra_cam/depth_registered/hw_registered/image_rect/compressed
-/astra_cam/depth_registered/hw_registered/image_rect/compressed/parameter_descriptions
-/astra_cam/depth_registered/hw_registered/image_rect/compressed/parameter_updates
-/astra_cam/depth_registered/hw_registered/image_rect/compressedDepth
-/astra_cam/depth_registered/hw_registered/image_rect/compressedDepth/parameter_descriptions
-/astra_cam/depth_registered/hw_registered/image_rect/compressedDepth/parameter_updates
-/astra_cam/depth_registered/hw_registered/image_rect/theora
-/astra_cam/depth_registered/hw_registered/image_rect/theora/parameter_descriptions
-/astra_cam/depth_registered/hw_registered/image_rect/theora/parameter_updates
-/astra_cam/depth_registered/hw_registered/image_rect_raw
-/astra_cam/depth_registered/hw_registered/image_rect_raw/compressed
-/astra_cam/depth_registered/hw_registered/image_rect_raw/compressed/parameter_descriptions
-/astra_cam/depth_registered/hw_registered/image_rect_raw/compressed/parameter_updates
-/astra_cam/depth_registered/hw_registered/image_rect_raw/compressedDepth
-/astra_cam/depth_registered/hw_registered/image_rect_raw/compressedDepth/parameter_descriptions
-/astra_cam/depth_registered/hw_registered/image_rect_raw/compressedDepth/parameter_updates
-/astra_cam/depth_registered/hw_registered/image_rect_raw/theora
-/astra_cam/depth_registered/hw_registered/image_rect_raw/theora/parameter_descriptions
-/astra_cam/depth_registered/hw_registered/image_rect_raw/theora/parameter_updates
-/astra_cam/depth_registered/image
-/astra_cam/depth_registered/image/compressed
-/astra_cam/depth_registered/image/compressed/parameter_descriptions
-/astra_cam/depth_registered/image/compressed/parameter_updates
-/astra_cam/depth_registered/image/compressedDepth
-/astra_cam/depth_registered/image/compressedDepth/parameter_descriptions
-/astra_cam/depth_registered/image/compressedDepth/parameter_updates
-/astra_cam/depth_registered/image/theora
-/astra_cam/depth_registered/image/theora/parameter_descriptions
-/astra_cam/depth_registered/image/theora/parameter_updates
-/astra_cam/depth_registered/image_raw
-/astra_cam/depth_registered/image_raw/compressed
-/astra_cam/depth_registered/image_raw/compressed/parameter_descriptions
-/astra_cam/depth_registered/image_raw/compressed/parameter_updates
-/astra_cam/depth_registered/image_raw/compressedDepth
-/astra_cam/depth_registered/image_raw/compressedDepth/parameter_descriptions
-/astra_cam/depth_registered/image_raw/compressedDepth/parameter_updates
-/astra_cam/depth_registered/image_raw/theora
-/astra_cam/depth_registered/image_raw/theora/parameter_descriptions
-/astra_cam/depth_registered/image_raw/theora/parameter_updates
 /astra_cam/depth_registered/points
-/astra_cam/depth_registered_rectify_depth/parameter_descriptions
-/astra_cam/depth_registered_rectify_depth/parameter_updates
-/astra_cam/driver/parameter_descriptions
-/astra_cam/driver/parameter_updates
-/astra_cam/ir/camera_info
-/astra_cam/ir/image
-/astra_cam/ir/image/compressed
-/astra_cam/ir/image/compressed/parameter_descriptions
-/astra_cam/ir/image/compressed/parameter_updates
-/astra_cam/ir/image/compressedDepth
-/astra_cam/ir/image/compressedDepth/parameter_descriptions
-/astra_cam/ir/image/compressedDepth/parameter_updates
-/astra_cam/ir/image/theora
-/astra_cam/ir/image/theora/parameter_descriptions
-/astra_cam/ir/image/theora/parameter_updates
-/astra_cam/projector/camera_info
-/astra_cam/rgb/camera_info
-/astra_cam/rgb/image_raw
-/astra_cam/rgb/image_raw/compressed
-/astra_cam/rgb/image_raw/compressed/parameter_descriptions
-/astra_cam/rgb/image_raw/compressed/parameter_updates
-/astra_cam/rgb/image_raw/compressedDepth
-/astra_cam/rgb/image_raw/compressedDepth/parameter_descriptions
-/astra_cam/rgb/image_raw/compressedDepth/parameter_updates
-/astra_cam/rgb/image_raw/theora
-/astra_cam/rgb/image_raw/theora/parameter_descriptions
-/astra_cam/rgb/image_raw/theora/parameter_updates
-/astra_cam/rgb/image_rect_color
-/astra_cam/rgb/image_rect_color/compressed
-/astra_cam/rgb/image_rect_color/compressed/parameter_descriptions
-/astra_cam/rgb/image_rect_color/compressed/parameter_updates
-/astra_cam/rgb/image_rect_color/compressedDepth
-/astra_cam/rgb/image_rect_color/compressedDepth/parameter_descriptions
-/astra_cam/rgb/image_rect_color/compressedDepth/parameter_updates
-/astra_cam/rgb/image_rect_color/theora
-/astra_cam/rgb/image_rect_color/theora/parameter_descriptions
-/astra_cam/rgb/image_rect_color/theora/parameter_updates
-/astra_cam/rgb_rectify_color/parameter_descriptions
-/astra_cam/rgb_rectify_color/parameter_updates
 ```
 
-<img width="874" height="238" alt="image" src="https://github.com/user-attachments/assets/086700c1-6704-4d2d-b529-22d1f8b68dea" />
+Both were confirmed to be of type `sensor_msgs/PointCloud2`. The registered cloud, `/astra_cam/depth_registered/points`, was used for the initial investigation because its depth data is aligned with the RGB image.
 
-<img width="900" height="878" alt="image" src="https://github.com/user-attachments/assets/b7962f06-8451-4fff-b025-449c2d058074" />
+### 2.2 Understanding PointCloud2 Fields
 
-<img width="912" height="138" alt="image" src="https://github.com/user-attachments/assets/1b3d733c-713b-4e3f-b677-7e7d1f960e47" />
+A `PointCloud2` message packs each point's data into a fixed number of bytes, described by a set of **fields**. Each field has:
 
+- **name** — what the value represents (e.g. `x`, `y`, `z`, `rgb`)
+- **offset** — the byte position where the field starts within one point's data
+- **datatype** — the numeric encoding used (datatype `7` corresponds to a 32-bit float, `FLOAT32`)
+- **count** — how many values of that type the field holds (normally `1`)
 
-<img width="852" height="602" alt="image" src="https://github.com/user-attachments/assets/7de81274-1413-4ba6-b24b-67a180347616" />
+The message also carries several structural properties:
 
+| Property | Meaning |
+|---|---|
+| `height` | Number of rows in the cloud. For an organized, camera-style cloud this is the vertical pixel resolution. For an unorganized cloud (such as an accumulated map), `height` is `1`. |
+| `width` | Number of points per row. For an organized cloud this is the horizontal pixel resolution. For an unorganized cloud, `width` is the total number of points. |
+| `point_step` | Number of bytes used to store one complete point. |
+| `row_step` | Number of bytes used to store one complete row (`width × point_step`). |
+| `is_dense` | `True` if every point has valid coordinates; `False` if the cloud may contain invalid points such as `NaN`. |
+| `data` | The raw binary buffer containing all point values. |
 
-<img width="829" height="803" alt="image" src="https://github.com/user-attachments/assets/8f2ae198-ff14-4c72-8f39-b85bf2b22456" />
+**Important distinction:** `height = 1` does not mean the cloud contains only one point. It means the cloud is *unorganized* — stored as a single row containing `width` points. For example, `height = 1, width = 100000` describes roughly 100,000 points stored in one row, as opposed to a `480 × 640` organized grid.
 
+### 2.3 Astra Camera Point Cloud — Verified Metadata
 
-GitHub Markdown — Point Cloud Verification
+Using `rostopic echo` on the header, fields, and structural properties, the following was confirmed for `/astra_cam/depth_registered/points`:
 
-You can paste this directly into your .md file:
+| Property | Verified Value |
+|---|---|
+| Topic | `/astra_cam/depth_registered/points` |
+| Message type | `sensor_msgs/PointCloud2` |
+| Frame | `astra_cam_rgb_optical_frame` |
+| Width | 640 |
+| Height | 480 |
+| Total point positions | 307,200 (640 × 480) |
+| Point step | 32 bytes |
+| Row step | 20,480 bytes (640 × 32) |
+| Dense | `False` |
+| x | FLOAT32, offset 0 |
+| y | FLOAT32, offset 4 |
+| z | FLOAT32, offset 8 |
+| rgb | FLOAT32-encoded, offset 16 |
 
-## Point Cloud Verification
+Since `is_dense` is `False`, some points may contain `NaN` or otherwise invalid coordinates. These must be filtered out before clustering:
 
-Before implementing point-cloud processing, the actual PointCloud2 message published by RTAB-Map was inspected on the JetAutoPro.
+```text
+Raw Point Cloud → Remove Invalid XYZ → Valid Point Cloud → Clustering
+```
 
-### RTAB-Map Point Cloud Topic
+The `rgb` field, although stored as a 32-bit float, is not a plain color value — it is a packed representation that needs to be decoded correctly when read in Python.
+
+### 2.4 RTAB-Map Point Cloud — Verified Metadata
+
+RTAB-Map publishes its own accumulated map cloud on:
 
 ```text
 /jetauto_1/rtabmap/cloud_map
+```
 
-Message type:
+This is a separate data source from the live Astra feed: the Astra topic reflects the camera's *current* view, while the RTAB-Map topic reflects the *accumulated 3D map* built from mapping over time. The two should not be treated as interchangeable.
 
-sensor_msgs/PointCloud2
+Verification steps and results:
 
-The topic is published by:
+- **Message type** (`rostopic type`): `sensor_msgs/PointCloud2`
+- **Publisher** (`rostopic info`): published by `/jetauto_1/rtabmap/rtabmap`
+- **Publish rate** (`rostopic hz`):
 
-/jetauto_1/rtabmap/rtabmap
+  ```text
+  average rate: 4.758 Hz
+  min: 0.165 s
+  max: 0.248 s
+  std dev: 0.01805 s
+  window: 48
+  ```
 
-This confirms that the RTAB-Map node is actively publishing the 3D map point cloud.
+  This means a new map cloud arrived roughly every 210 ms on average (1 / 4.758 ≈ 0.210 s), with the fastest interval at 165 ms and the slowest at 248 ms. The 18 ms standard deviation indicates the timing was reasonably consistent, and the statistics were computed over 48 received messages.
 
-PointCloud2 Fields
+- **Fields** (`rostopic echo .../fields`): `x`, `y`, `z`, `rgb`, each `FLOAT32`, at the same offsets as the Astra cloud (0, 4, 8, 16).
 
-The actual fields reported by the robot are:
+A later, more complete check of the RTAB-Map cloud's structural fields returned:
 
-Field	Offset	Datatype	Count
-x	0 bytes	FLOAT32	1
-y	4 bytes	FLOAT32	1
-z	8 bytes	FLOAT32	1
-rgb	16 bytes	FLOAT32	1
+```text
+Frame ID  : jetauto_1/map
+Width     : 76
+Height    : 1
+Fields    : x, y, z, rgb
+Point step: 32
+Row step  : 2432
+Dense     : True
+```
 
-In ROS sensor_msgs/PointField, datatype 7 corresponds to FLOAT32.
+This confirmed the RTAB-Map cloud is an *unorganized* cloud (`height = 1`) containing 76 points at that particular moment, and that it was reported as fully dense (`is_dense = True`).
 
-Therefore, each point contains:
+### 2.5 Summary of Verified Data
 
-X
-Y
-Z
-RGB
+Both the Astra camera cloud and RTAB-Map map cloud provide the fields required for geometric segmentation:
 
-Conceptually:
-
+```text
 P = (x, y, z, rgb)
+```
 
-The exact field layout was verified directly from the robot instead of being assumed.
+with the key structural difference being that the Astra cloud is a large, organized 640×480 grid captured live, while the RTAB-Map cloud is a smaller, unorganized accumulated map.
 
-Point Cloud Publication Rate
+---
 
-The following command was used:
+## 3. Development Roadmap
 
-rostopic hz /jetauto_1/rtabmap/cloud_map
+The project was broken into incremental, independently verifiable phases:
 
-Measured result:
+```text
+Phase 1 — Read raw PointCloud2 data
+Phase 2 — Remove invalid points
+Phase 3 — Downsample the cloud
+Phase 4 — Euclidean clustering
+Phase 5 — Cluster geometry (centroid, bounding box)
+Phase 6 — Distance / gap detection
+Phase 7 — Interactive 3D viewer
+Phase 8 — Compare against DBSCAN, region growing, supervoxels
+Phase 9 — Explore SAM + depth for semantic segmentation
+```
 
-average rate: 4.758 Hz
-min: 0.165 s
-max: 0.248 s
-std dev: 0.01805 s
-window: 48
-Meaning of the Measurements
-Average rate: 4.758 Hz
-RTAB-Map published approximately 4.76 point-cloud messages per second.
+### ROS Environment
 
-Average interval:
-Approximately:
+```text
+ROS version         : 1.14.13 (Melodic)
+Python (ROS/catkin)  : 2.7.17
+Python 3 (available) : 3.6.9
+```
 
-1 / 4.758 ≈ 0.210 s
-
-Therefore, a new point-cloud message arrived approximately every 210 ms on average.
-
-Minimum interval: 0.165 s
-The shortest observed time between two consecutive cloud messages was 165 ms.
-Maximum interval: 0.248 s
-The longest observed time between two consecutive cloud messages was 248 ms.
-Standard deviation: 0.01805 s
-The standard deviation of the message intervals was approximately 18 ms, indicating the amount of variation in the cloud publication timing.
-Window: 48
-The statistics were calculated using 48 received cloud messages.
-Result
-
-The RTAB-Map point-cloud topic is confirmed to be active and contains the required geometric information:
-
-RTAB-Map
-    ↓
-/jetauto_1/rtabmap/cloud_map
-    ↓
-sensor_msgs/PointCloud2
-    ↓
-X + Y + Z + RGB
-
-This provides the required 3D point representation for the next stage of the project.
-
-
-## One thing we still need to verify
-
-We have **not yet checked** the RTAB-Map cloud's:
-
-- `width`
-- `height`
-- `point_step`
-- `row_step`
-- `is_dense`
-- actual `frame_id`
-
-We checked those for the Astra camera cloud, but **RTAB-Map's `cloud_map` can have a different structure**.
-
-So let's finish this verification before writing the Python node.
-
-Run:
+The project package was created with:
 
 ```bash
-rostopic echo -n 1 /jetauto_1/rtabmap/cloud_map/header
-rostopic echo -n 1 /jetauto_1/rtabmap/cloud_map/width
-rostopic echo -n 1 /jetauto_1/rtabmap/cloud_map/height
-rostopic echo -n 1 /jetauto_1/rtabmap/cloud_map/point_step
-rostopic echo -n 1 /jetauto_1/rtabmap/cloud_map/row_step
-rostopic echo -n 1 /jetauto_1/rtabmap/cloud_map/is_dense
+cd ~/catkin_ws/src
+catkin_create_pkg pointcloud_segmentation rospy sensor_msgs
+```
 
-After these, we'll have the complete RTAB-Map PointCloud2 specification. Then we can finally write our first small Python program to extract actual (x, y, z, rgb) points.
+and built and sourced in the usual way:
 
-this findings can you write me an .md for these also the height 1 and width etc what are those included. also the previuos ones too. 
-
-Yes. We should document both sets of findings:
-
-Astra camera PointCloud2 — all metadata we actually verified.
-RTAB-Map /cloud_map — fields, publisher, rate, and the metadata we know so far.
-Explain what height, width, point_step, row_step, is_dense, fields, offsets, datatype mean.
-Clearly distinguish what is verified from what we have not checked yet.
-
-You can paste this directly into GitHub as an .md file.
-
-# Point Cloud Investigation
-
-## 1. Objective
-
-Before implementing point-cloud segmentation, the actual `sensor_msgs/PointCloud2` messages published by the Astra Pro Plus camera and RTAB-Map were inspected.
-
-The purpose was to determine:
-
-- Which point-cloud topics are available
-- PointCloud2 message type
-- Point-cloud dimensions
-- Coordinate frame
-- Available fields
-- Field datatypes and offsets
-- Point size
-- Row size
-- Whether invalid points are present
-- RTAB-Map point-cloud publication rate
-
-The point-cloud format was verified directly on the JetAutoPro instead of being assumed.
+```bash
+cd ~/catkin_ws
+catkin_make
+source ~/catkin_ws/devel/setup.bash
+```
 
 ---
 
-# 2. Astra Camera Point Cloud
+## 4. Phase 1 — Reading the Point Cloud
 
-The Astra camera was already running before RTAB-Map was launched.
-
-The available point-cloud topics were:
+A ROS node, `pointcloud_reader.py`, was created at:
 
 ```text
-/astra_cam/depth/points
-/astra_cam/depth_registered/points
+~/catkin_ws/src/pointcloud_segmentation/scripts/pointcloud_reader.py
+```
 
-Both topics were verified as:
+The node subscribes to a `PointCloud2` topic, prints the cloud's metadata (frame, width, height, fields, point step, row step, density), and prints the first ten points using `sensor_msgs.point_cloud2.read_points()`. To keep the initial test simple, it processes only the first message received and ignores all subsequent ones.
 
-sensor_msgs/PointCloud2
+Running the node against `/jetauto_1/rtabmap/cloud_map` confirmed that real `(x, y, z, rgb)` values could be read successfully, completing Phase 1.
 
-For the initial investigation, the registered point cloud was used:
+---
 
-/astra_cam/depth_registered/points
-3. Astra PointCloud2 Publisher
+## 5. Phase 2 — Removing Invalid Points
 
-Command:
+Since the Astra cloud is not guaranteed to be dense, the reader was extended to check every point's `x`, `y`, and `z` values for `NaN` or infinity before accepting it. Because the ROS Melodic environment uses Python 2.7, which lacks `math.isfinite()`, the check was implemented using `math.isnan()` and `math.isinf()` on each coordinate individually.
 
-rostopic info /astra_cam/depth_registered/points
+Points that fail this check are discarded; all others are counted as valid. Running the updated node against the RTAB-Map cloud produced:
 
-Result:
+```text
+Total points  : 818
+Valid XYZ     : 818
+Invalid XYZ   : 0
+```
 
-Type: sensor_msgs/PointCloud2
+The `rgb` field itself sometimes contained `NaN`, but this did not disqualify a point, since only the geometric coordinates matter for this stage of the project. This completed Phase 2.
 
-Publishers:
+---
 
-- /astra_cam/astra_cam_nodelet_manager
+## 6. Phase 3 — Voxel Downsampling
 
-Subscribers: None
+Processing the full 640×480 (307,200-point) Astra cloud on every frame is computationally expensive, so a voxel-grid downsampling step was added before any further processing.
 
-This confirms that the Astra camera nodelet manager publishes the PointCloud2 data.
+**How it works:** the 3D space is divided into cubic voxels of a fixed size. All points falling inside the same voxel are replaced by a single representative point — the average (centroid) of that voxel's points. This preserves the overall shape of the cloud while dramatically reducing the point count.
 
-4. Astra PointCloud2 Header
+The current voxel size is:
 
-Command:
+```text
+0.02 m (2 cm)
+```
 
-rostopic echo -n 1 /astra_cam/depth_registered/points/header
+A representative run against the live Astra cloud produced:
 
-Important result:
+```text
+Frame ID   : camera_rgb_optical_frame
+Width      : 640
+Height     : 480
+Fields     : x, y, z
+Point step : 16
+Row step   : 10240
+Dense      : False
 
-frame_id: "astra_cam_rgb_optical_frame"
+Total points  : 307,200
+Valid XYZ     : 252,836
+Invalid XYZ   : 54,364
 
-Therefore, the point cloud is expressed in:
+Original valid points : 252,836
+Downsampled points    : 7,229
+Point reduction        : 97.14%
+```
 
-astra_cam_rgb_optical_frame
+This is a substantial reduction — from roughly a quarter-million points down to about seven thousand — while retaining the overall spatial structure of the scene. This completed Phase 3.
 
-The header also contains:
+---
 
-seq
-stamp
-frame_id
+## 7. Phase 4 — Euclidean Clustering
 
-The timestamp allows the point cloud to be associated with a particular moment in time.
+With a manageable number of points available, the next step was to group them into clusters representing distinct objects. This was implemented using `sklearn.neighbors.NearestNeighbors` (scikit-learn version `0.19.1`, confirmed available in the environment).
 
-5. Astra PointCloud2 Dimensions
+### 7.1 Algorithm
 
-The following values were verified:
+For each point, all neighboring points within a fixed radius (the *cluster tolerance*) are found. Starting from an unvisited point, the algorithm expands outward through connected neighbors — similar to a flood fill — marking points as visited and grouping them into a single cluster. This continues until no more connected points remain, at which point the next unvisited point starts a new cluster. Clusters outside a configured size range are discarded as either noise (too small) or merged background (too large).
 
-height = 480
-width  = 640
+### 7.2 Parameters
 
-Therefore:
+```text
+Cluster tolerance     : 0.05 m (5 cm) — maximum distance for two points to be considered connected
+Minimum cluster size   : 20 points   — smaller groups are treated as noise
+Maximum cluster size   : 5000 points — larger groups are excluded
+```
 
-Total organized point positions = width × height
+### 7.3 Results
 
-= 640 × 480
+A representative run on 7,079 downsampled points produced:
 
-= 307,200
+```text
+Number of clusters : 9
 
-So the cloud contains up to:
+Cluster 1 : 3,912 points
+Cluster 2 : 1,783 points
+Cluster 3 :   184 points
+Cluster 4 :   286 points
+Cluster 5 :   196 points
+Cluster 6 :   194 points
+Cluster 7 :   206 points
+Cluster 8 :   218 points
+Cluster 9 :    76 points
 
-307,200 point positions
-5.1 What does width mean?
+Clustered points  : 7,055
+Noise/unclustered : 24
 
-For an organized PointCloud2, width represents the number of points in each row.
+Largest cluster   : 3,912
+Smallest cluster  : 76
+Average cluster   : 783.89
+```
 
-In this case:
+This confirmed that the pipeline could successfully separate a downsampled cloud into distinct, connected regions, completing Phase 4.
 
-width = 640
+**Note on variability:** later runs on different scenes produced noticeably different cluster counts and sizes (for example, one run found 4 clusters from 10,749 points, with over 10,000 points classified as noise). This is expected — Euclidean clustering results depend heavily on the actual scene geometry, not just the algorithm parameters — and is treated as an observation for later experimental analysis rather than a bug.
 
-This corresponds to the horizontal resolution of the camera.
+---
 
-Conceptually:
+## 8. Phase 5 — Cluster Geometry Analysis
 
-640 points per row
-5.2 What does height mean?
+Once clusters are identified, each one is analyzed to extract useful geometric properties: point count, centroid, axis-aligned bounding box, and overall dimensions.
 
-For an organized PointCloud2, height represents the number of rows.
+- **Centroid** — the mean X, Y, and Z coordinate of all points in the cluster; an approximate center point.
+- **Bounding box** — the minimum and maximum X, Y, and Z values within the cluster.
+- **Dimensions** — the width, depth, and height of the bounding box:
 
-In this case:
+  ```text
+  Width  = Max X − Min X
+  Depth  = Max Y − Min Y
+  Height = Max Z − Min Z
+  ```
 
-height = 480
+### Example Results
 
-Therefore:
+A verified run produced four clusters with the following geometry (all values in the camera coordinate frame):
 
-480 rows
+**Cluster 1** — 196 points
+Centroid: (−0.023, 0.195, 0.684) m · Bounds: X [−0.190, 0.146], Y [−0.029, 0.285], Z [0.637, 0.730] · Dimensions: 0.336 × 0.314 × 0.093 m
 
-The cloud can be thought of as a 2D grid:
+**Cluster 2** — 154 points
+Centroid: (0.133, 0.204, 1.755) m · Bounds: X [0.029, 0.246], Y [0.126, 0.284], Z [1.714, 1.795] · Dimensions: 0.217 × 0.159 × 0.081 m
 
-             width = 640
-       ┌──────────────────────┐
-       │ • • • • • • • • • •  │
-       │ • • • • • • • • • •  │
-       │ • • • • • • • • • •  │
-       │          ...         │
-       │ • • • • • • • • • •  │
-       └──────────────────────┘
-              height = 480
+**Cluster 3** — 258 points
+Centroid: (0.312, 0.212, 1.075) m · Bounds: X [0.156, 0.501], Y [0.056, 0.423], Z [1.037, 1.128] · Dimensions: 0.345 × 0.368 × 0.091 m
 
-This is called an organized point cloud.
+**Cluster 4** — 93 points
+Centroid: (0.331, 0.230, 0.879) m · Bounds: X [0.277, 0.446], Y [0.139, 0.349], Z [0.863, 0.902] · Dimensions: 0.168 × 0.211 × 0.040 m
 
-The point at image position (u, v) can correspond to the 3D point generated from that camera pixel.
+This moved the project from simply detecting *how many* clusters exist to describing *where* each one is and *how large* it is — geometric information that can later support navigation and gap detection. This completed Phase 5.
 
-6. Astra PointCloud2 Fields
+---
 
-Command:
+## 9. Camera Performance Check
 
-rostopic echo -n 1 /astra_cam/depth_registered/points/fields
+To make sure the live camera feed itself was healthy, its publish rate was checked separately:
 
-Verified result:
+```bash
+rostopic hz /jetauto_1/camera/depth/points
+```
 
-- name: "x"
-  offset: 0
-  datatype: 7
-  count: 1
+This measured a steady rate of approximately **24–25 Hz**. This confirmed that when the segmentation node appeared to stop producing new output, the camera itself was not at fault — the node was intentionally written to process only the first received frame (`if self.received: return`), so the camera continued streaming at full rate in the background while the segmentation logic ran once.
 
-- name: "y"
-  offset: 4
-  datatype: 7
-  count: 1
+---
 
-- name: "z"
-  offset: 8
-  datatype: 7
-  count: 1
+## 10. Phase 6 — Colored Cluster Output
 
-- name: "rgb"
-  offset: 16
-  datatype: 7
-  count: 1
+To prepare for visualization, a second publisher was added that outputs the segmented, colored cloud on a new topic:
 
-Therefore, each point contains:
+```text
+/pointcloud_segmentation/clusters   (sensor_msgs/PointCloud2)
+```
 
-x
-y
-z
-rgb
+Each accepted cluster is assigned a distinct RGB color so that clusters can be told apart visually. In one verified run, the published cloud contained 678 colored points, and the topic was confirmed to be active using `rostopic list`, `rostopic info`, and `rostopic echo -n 1 .../fields` (returning `x`, `y`, `z`, `rgb` as expected).
 
-Conceptually:
+---
 
-P = (x, y, z, rgb)
-7. Meaning of PointCloud2 Fields
-7.1 X
-name: x
-offset: 0
-datatype: 7
+## 11. Phase 7 — RViz Visualization (In Progress)
 
-x represents the point's X coordinate.
+### 11.1 Display Requirement
 
-7.2 Y
-name: y
-offset: 4
-datatype: 7
+The processing stages up to this point can all be run over SSH. RViz, however, requires a graphical display, so this stage uses the robot's main display.
 
-y represents the point's Y coordinate.
+### 11.2 Fixed Frame
 
-7.3 Z
-name: z
-offset: 8
-datatype: 7
+The live Astra cloud is published in the `camera_rgb_optical_frame`. An early attempt to visualize the cloud with RViz's Fixed Frame set to `map` failed, because that TF frame was not available in the current setup. Changing the Fixed Frame to `camera_rgb_optical_frame` resolved the mismatch.
 
-z represents the point's Z coordinate/depth.
+### 11.3 Current Status
 
-7.4 RGB
-name: rgb
-offset: 16
-datatype: 7
+The segmented cloud display was added via **Add → By topic → `/pointcloud_segmentation/clusters` → PointCloud2**, configured with:
 
-The point cloud also contains RGB information.
+```text
+Style             : Points
+Size              : 3
+Color Transformer : RGB8
+```
 
-The RGB field is stored using a 32-bit field represented by ROS as FLOAT32.
+However, the Color Transformer field currently appears blank in RViz, which suggests the published RGB field needs further verification for compatibility with this ROS Melodic/RViz environment. **This is the current unresolved item in the pipeline.**
 
-It should not be interpreted as an ordinary floating-point color value.
+Recommended next diagnostic steps:
 
-When processing the cloud in Python, the RGB field should be decoded appropriately.
+```bash
+rostopic type /pointcloud_segmentation/clusters
+rostopic echo -n 1 /pointcloud_segmentation/clusters/fields
+rostopic hz /pointcloud_segmentation/clusters
+```
 
-8. What Does datatype: 7 Mean?
+The last check is expected to show that the topic is not continuously publishing, since the node currently processes only one frame — continuous publishing is planned as the next implementation improvement.
 
-ROS sensor_msgs/PointField assigns numeric values to datatypes.
+---
 
-For this point cloud:
+## 12. Current Verified Architecture
 
-datatype = 7
+```text
+                Astra RGB-D Camera
+                        │
+                        ▼
+        /jetauto_1/camera/depth/points
+                        │
+                        ▼
+             sensor_msgs/PointCloud2
+                        │
+                        ▼
+              Read XYZ coordinates
+                        │
+                        ▼
+               Remove invalid XYZ
+                        │
+                        ▼
+                 NumPy array
+                        │
+                        ▼
+              Voxel Downsampling
+                 (voxel = 0.02 m)
+                        │
+                        ▼
+              ~7,000–11,000 points
+                        │
+                        ▼
+            Euclidean Clustering
+              (tolerance = 0.05 m)
+                        │
+                        ▼
+                  Clusters
+                        │
+             ┌──────────┴──────────┐
+             ▼                     ▼
+       Cluster Geometry       Colored Cloud
+       • centroid              • XYZ
+       • bounding box          • RGB
+       • dimensions                  │
+             │                        ▼
+             │           /pointcloud_segmentation/clusters
+             │                        │
+             └────────────────────────┤
+                                       ▼
+                                     RViz
+```
 
-means:
+---
 
-FLOAT32
+## 13. Current Parameters
 
-Therefore:
+| Parameter | Current Value |
+|---|---:|
+| Camera resolution | 640 × 480 |
+| Raw points per frame | 307,200 |
+| Voxel size | 0.020 m |
+| Cluster tolerance | 0.050 m |
+| Minimum cluster size | 20 points |
+| Maximum cluster size | 5,000 points |
+| Camera frame | `camera_rgb_optical_frame` |
+| Input topic | `/jetauto_1/camera/depth/points` |
+| Output topic | `/pointcloud_segmentation/clusters` |
+| ROS distribution | Melodic |
+| Python version | 2.7.17 |
+| scikit-learn version | 0.19.1 |
 
-x   → FLOAT32
-y   → FLOAT32
-z   → FLOAT32
-rgb → FLOAT32 field representation
+---
 
-Each FLOAT32 occupies:
-
-4 bytes
-9. What Does offset Mean?
-
-The offset specifies where a field starts inside one point's binary data.
-
-The verified layout is:
-
-x   → offset 0
-y   → offset 4
-z   → offset 8
-rgb → offset 16
-
-Therefore:
-
-Point memory layout
-
-Byte 0  ───── x
-Byte 4  ───── y
-Byte 8  ───── z
-...
-Byte 16 ───── rgb
-
-There are unused/reserved bytes between some fields.
-
-The complete size of one point is determined by:
-
-point_step = 32 bytes
-10. Astra Point Step
-
-Command:
-
-rostopic echo -n 1 /astra_cam/depth_registered/points/point_step
-
-Result:
-
-32
-
-Therefore:
-
-point_step = 32 bytes
-
-point_step means:
-
-The number of bytes occupied by one complete point.
-
-So every point occupies:
-
-32 bytes
-
-even though the important fields are only:
-
-x
-y
-z
-rgb
-11. Astra Row Step
-
-Command:
-
-rostopic echo -n 1 /astra_cam/depth_registered/points/row_step
-
-Result:
-
-20480
-
-Therefore:
-
-row_step = 20,480 bytes
-
-This represents the number of bytes occupied by one complete row.
-
-We can verify it:
-
-row_step = width × point_step
-
-         = 640 × 32
-
-         = 20,480 bytes
-
-The calculated value exactly matches the value reported by the robot.
-
-12. Astra is_dense
-
-Command:
-
-rostopic echo -n 1 /astra_cam/depth_registered/points/is_dense
-
-Result:
-
-False
-
-This is important.
-
-is_dense: False means that the point cloud may contain invalid points.
-
-For example, some points may contain:
-
-NaN
-
-or otherwise invalid coordinates.
-
-Therefore, before performing clustering, invalid points must be removed.
-
-Conceptually:
-
-Raw Point Cloud
-      ↓
-Remove invalid XYZ
-      ↓
-Valid Point Cloud
-      ↓
-Clustering
-13. Astra Point Cloud Summary
-Property	Verified Value
-Topic	/astra_cam/depth_registered/points
-Type	sensor_msgs/PointCloud2
-Frame	astra_cam_rgb_optical_frame
-Width	640
-Height	480
-Point positions	307,200
-Point step	32 bytes
-Row step	20,480 bytes
-Dense	False
-X	FLOAT32, offset 0
-Y	FLOAT32, offset 4
-Z	FLOAT32, offset 8
-RGB	FLOAT32 field, offset 16
-14. RTAB-Map Point Cloud
-
-After launching the RTAB-Map setup, the following topic became available:
-
-/jetauto_1/rtabmap/cloud_map
-
-The topic was verified using:
-
-rostopic type /jetauto_1/rtabmap/cloud_map
-
-Result:
-
-sensor_msgs/PointCloud2
-
-Therefore, RTAB-Map publishes its map cloud using the standard ROS PointCloud2 message.
-
-15. RTAB-Map Point Cloud Publisher
-
-Command:
-
-rostopic info /jetauto_1/rtabmap/cloud_map
-
-Result:
-
-Type: sensor_msgs/PointCloud2
-
-Publishers:
-
-- /jetauto_1/rtabmap/rtabmap
-
-Subscribers: None
-
-This confirms that the RTAB-Map node itself is publishing the cloud.
-
-16. RTAB-Map Point Cloud Publication Rate
-
-Command:
-
-rostopic hz /jetauto_1/rtabmap/cloud_map
-
-Measured result:
-
-average rate: 4.758
-min: 0.165s
-max: 0.248s
-std dev: 0.01805s
-window: 48
-16.1 Average Rate
-average rate = 4.758 Hz
-
-This means RTAB-Map published approximately:
-
-4.758 point-cloud messages per second
-
-The approximate average interval is:
-
-1 / 4.758
-≈ 0.210 seconds
-
-Therefore, a new cloud was published approximately every:
-
-210 ms
-
-on average.
-
-16.2 Minimum Interval
-min = 0.165 s
-
-The shortest observed interval between two consecutive messages was:
-
-165 ms
-16.3 Maximum Interval
-max = 0.248 s
-
-The longest observed interval was:
-
-248 ms
-16.4 Standard Deviation
-std dev = 0.01805 s
-
-This is approximately:
-
-18 ms
-
-It represents the variation in the time interval between consecutive cloud messages.
-
-A smaller standard deviation generally indicates more consistent timing.
-
-16.5 Window
-window = 48
-
-This means the reported statistics were calculated using:
-
-48 received messages
-17. RTAB-Map PointCloud2 Fields
-
-Command:
-
-rostopic echo -n 1 /jetauto_1/rtabmap/cloud_map/fields
-
-Verified result:
-
-- name: "x"
-  offset: 0
-  datatype: 7
-  count: 1
-
-- name: "y"
-  offset: 4
-  datatype: 7
-  count: 1
-
-- name: "z"
-  offset: 8
-  datatype: 7
-  count: 1
-
-- name: "rgb"
-  offset: 16
-  datatype: 7
-  count: 1
-
-Therefore, the RTAB-Map cloud contains:
-
-X
-Y
-Z
-RGB
-
-Conceptually:
-
-P = (x, y, z, rgb)
-
-This is exactly the type of information required for the planned geometric segmentation pipeline.
-
-18. Camera Cloud vs RTAB-Map Cloud
-
-The two point-cloud sources serve different purposes.
-
-Astra Live Point Cloud
-Astra Camera
-      ↓
-/astra_cam/depth_registered/points
-      ↓
-640 × 480 organized cloud
-      ↓
-Current camera view
-
-This represents the current RGB-D camera observation.
-
-RTAB-Map Map Cloud
-Astra RGB-D
-      ↓
-RTAB-Map
-      ↓
-/jetauto_1/rtabmap/cloud_map
-      ↓
-3D map cloud
-
-This represents the point cloud generated by RTAB-Map's mapping process.
-
-Therefore, they should not automatically be treated as identical data sources.
-
-19. Why cloud_map Is Important
-
-The project eventually aims to perform:
-
-3D Point Cloud
-      ↓
-Segmentation
-      ↓
-Object Clusters
-      ↓
-Object Geometry
-      ↓
-Distance / Gap Analysis
-
-The RTAB-Map topic:
-
-/jetauto_1/rtabmap/cloud_map
-
-is therefore a potential input to the segmentation pipeline.
-
-However, the exact dimensions and other metadata of the RTAB-Map cloud should still be inspected before implementing the processing node.
-
-20. Important Difference: Width and Height
-
-width and height do not necessarily mean the same thing for every PointCloud2 topic.
-
-For the Astra cloud:
-
-width = 640
-height = 480
-
-This is an organized camera-style point cloud:
-
-640 × 480
-
-For another PointCloud2 topic, such as an accumulated map cloud, it is possible for the structure to be different.
-
-For example, a point cloud can conceptually have:
-
-height = 1
-width = N
-
-This means:
-
-N points
-
-stored as a single row.
-
-Therefore:
-
-height = 1 does NOT mean that the point cloud contains only one point.
-
-It means that the PointCloud2 is unorganized and contains one row containing width points.
-
-For example:
-
-height = 1
-width = 100000
-
-means approximately:
-
-100,000 points
-
-stored as:
-
-1 × 100000
-
-rather than:
-
-480 × 640
-
-This distinction is important when we write the Python point-cloud reader.
-
-21. PointCloud2 Structure
-
-A PointCloud2 message can be thought of as:
-
-PointCloud2
-│
-├── Header
-│   ├── timestamp
-│   └── frame_id
-│
-├── height
-│
-├── width
-│
-├── fields
-│   ├── x
-│   ├── y
-│   ├── z
-│   └── rgb
-│
-├── point_step
-│
-├── row_step
-│
-├── data
-│
-└── is_dense
-
-The important components for our project are:
-
-Header
-   ↓
-Coordinate frame
-
-Width / Height
-   ↓
-Point-cloud organization
-
-Fields
-   ↓
-What information each point contains
-
-Point Step
-   ↓
-Bytes per point
-
-Row Step
-   ↓
-Bytes per row
-
-Data
-   ↓
-Actual binary point data
-
-is_dense
-   ↓
-Whether invalid points may exist
-22. Current Verified Pipeline
-
-At this stage, the verified system is:
-
-Astra Pro Plus RGB-D Camera
-          ↓
-   RGB + Depth
-          ↓
-   Astra PointCloud2
-          ↓
-/astra_cam/depth_registered/points
-          ↓
-       RTAB-Map
-          ↓
-/jetauto_1/rtabmap/cloud_map
-          ↓
-    X + Y + Z + RGB
-
-The next processing stage will be:
-
-RTAB-Map PointCloud2
-          ↓
-Read actual points
-          ↓
-Remove invalid points
-          ↓
-Point-cloud visualization
-          ↓
+## 14. Key Findings
+
+1. **Point cloud acquisition works reliably.** The Astra RGB-D camera publishes valid `PointCloud2` data at roughly 24–25 Hz.
+2. **A substantial fraction of raw points are invalid.** In one representative frame, of 307,200 possible points, only 188,592 had valid coordinates (about 61% valid, 39% invalid) — a ratio that varies frame to frame and must always be filtered before further processing.
+3. **Voxel downsampling is highly effective.** A 2 cm voxel size reduced point counts by roughly 94–97% across tested frames, making downstream clustering computationally practical.
+4. **Euclidean clustering successfully separates distinct regions**, but its output is strongly scene-dependent: one test produced 9 clusters from 7,079 points with only 24 points of noise, while another produced just 4 clusters from 10,706 points with over 10,000 points left unclustered. This sensitivity to scene content is an expected characteristic of the algorithm and is being treated as a subject for future experimental comparison rather than a defect.
+5. **Per-cluster geometry can be reliably extracted**, giving each detected object a point count, centroid, bounding box, and dimensions — moving the pipeline beyond simple detection toward information usable for localization and navigation.
+
+---
+
+## 15. Project Status
+
+| Phase | Status |
+|---|---|
+| 1 — ROS / PointCloud2 verification | Complete |
+| 2 — PointCloud2 reader | Complete |
+| 3 — Invalid point removal | Complete |
+| 4 — NumPy conversion | Complete |
+| 5 — Voxel downsampling | Complete |
+| 6 — Euclidean clustering | Complete |
+| 7 — Cluster geometry analysis | Complete |
+| 8 — Colored cluster publisher | Implemented |
+| 9 — RViz visualization | In progress |
+
+**Immediate next step:** resolve the blank Color Transformer field in RViz for the `/pointcloud_segmentation/clusters` topic, using the diagnostic commands listed in Section 11.3, then extend the publisher to run continuously rather than on a single frame.
+
+---
+
+## 16. Research Direction
+
+Beyond the working implementation, this project is being developed as a potential research contribution. A candidate research question is:
+
+> How can lightweight geometric point-cloud segmentation be optimized for real-time RGB-D perception on resource-constrained edge robotic hardware?
+
+The current Euclidean clustering implementation serves as the **baseline method** for a planned comparative study against:
+
+1. Euclidean Clustering (baseline)
+2. DBSCAN
+3. Region Growing
+4. Supervoxel-based segmentation
+
+### Planned Evaluation Metrics
+
+```text
+Processing time          Number of clusters
+Segmentation FPS          Noise percentage
+Input FPS                 Cluster size
+CPU utilization            Cluster dimensions
+RAM usage                  Segmentation quality
+```
+
+### Planned Parameter Sweeps
+
+- **Voxel size:** 0.01 m, 0.02 m, 0.03 m, 0.05 m
+- **Euclidean tolerance:** 0.03 m, 0.05 m, 0.07 m, 0.10 m
+
+The same scenes will be used across all parameter combinations and algorithms to keep results comparable.
+
+```text
+                 Point Cloud
+                      │
+          ┌───────────┼───────────┐
+          ▼           ▼           ▼
+      Euclidean     DBSCAN    Region Growing
+      Clustering
+          │           │           │
+          └───────────┼───────────┘
+                      ▼
+              Compare Results
+                      │
+          ┌───────────┼───────────┐
+          ▼           ▼           ▼
+       Runtime     Clusters     Quality
+          │           │           │
+          └───────────┼───────────┘
+                      ▼
+              Edge-Robot Analysis
+```
+
+---
+
+## 17. Repository Structure
+
+```text
+catkin_ws/
+└── src/
+    └── pointcloud_segmentation/
+        ├── package.xml
+        ├── CMakeLists.txt
+        └── scripts/
+            └── pointcloud_reader.py
+```
+
+The script implements the full pipeline in sequence:
+
+```text
+PointCloud2 subscriber
+        ↓
+Invalid point filtering
+        ↓
+NumPy conversion
+        ↓
+Voxel downsampling
+        ↓
 Euclidean clustering
-23. Current Status
-Verified
- Astra PointCloud2 exists
- Astra point-cloud topic identified
- Astra PointCloud2 message type verified
- Astra frame verified
- Astra width verified
- Astra height verified
- Astra X field verified
- Astra Y field verified
- Astra Z field verified
- Astra RGB field verified
- Astra point step verified
- Astra row step verified
- Astra is_dense verified
- RTAB-Map cloud_map exists
- RTAB-Map cloud_map message type verified
- RTAB-Map publisher verified
- RTAB-Map publication rate measured
- RTAB-Map X/Y/Z/RGB fields verified
-Still to verify for RTAB-Map
- RTAB-Map width
- RTAB-Map height
- RTAB-Map point_step
- RTAB-Map row_step
- RTAB-Map is_dense
- RTAB-Map frame_id
-
-These values should be obtained directly from:
-
-rostopic echo -n 1 /jetauto_1/rtabmap/cloud_map/header
-rostopic echo -n 1 /jetauto_1/rtabmap/cloud_map/width
-rostopic echo -n 1 /jetauto_1/rtabmap/cloud_map/height
-rostopic echo -n 1 /jetauto_1/rtabmap/cloud_map/point_step
-rostopic echo -n 1 /jetauto_1/rtabmap/cloud_map/row_step
-rostopic echo -n 1 /jetauto_1/rtabmap/cloud_map/is_dense
-24. Next Development Step
-
-Do not implement segmentation yet.
-
-First create a small Python ROS subscriber that reads:
-
-/jetauto_1/rtabmap/cloud_map
-
-and extracts a few actual points:
-
-(x, y, z, rgb)
-
-The initial program should:
-
-Subscribe to the PointCloud2 topic.
-Read the actual fields.
-Ignore invalid points.
-Print a small number of valid points.
-Display basic statistics such as the number of valid points.
-
-After this is verified, the next stages will be:
-
-PointCloud2
-     ↓
-Python Point Reader
-     ↓
-Raw 3D Points
-     ↓
-Visualization
-     ↓
-Euclidean Clustering
-     ↓
-Cluster Geometry
-     ↓
-Gap Detection
+        ↓
+Cluster analysis
+        ↓
+Colored PointCloud2 publisher
 ```
+
 ---
-```
-PHASE 1
-RTAB-Map PointCloud2
-        ↓
-Python Point Reader
-        ↓
-Actual (X, Y, Z, RGB)
-        ↓
-Verify
-        │
-        ▼
-PHASE 2
-Remove Invalid Points
-        ↓
-Valid XYZ points
-        ↓
-Verify
-        │
-        ▼
-PHASE 3
-Downsampling
-        ↓
-Reduced point cloud
-        ↓
-Verify
-        │
-        ▼
-PHASE 4
-Euclidean Clustering
-        ↓
-Cluster 1
-Cluster 2
-Cluster 3
-...
-        │
-        ▼
-PHASE 5
-Cluster Geometry
-        ↓
-Centroid
-Bounding Box
-Dimensions
-        │
-        ▼
-PHASE 6
-Distance / Gap Detection
-        │
-        ▼
-PHASE 7
-Interactive 3D Viewer
-        │
-        ▼
-PHASE 8
-Compare
-DBSCAN
-Region Growing
-Supervoxels
-        │
-        ▼
-PHASE 9
-SAM + Depth
-```
----
-cd ~/catkin_ws/src/pointcloud_segmentation/scripts
-nano pointcloud_reader.py (inside put this code initially)
-for reader used this code 
-```
-#!/usr/bin/env python
 
-import rospy
-import sensor_msgs.point_cloud2 as pc2
-from sensor_msgs.msg import PointCloud2
+## 18. Reproducibility Commands
 
+**Build and source the workspace:**
 
-class PointCloudReader:
-
-    def __init__(self):
-
-        self.subscriber = rospy.Subscriber(
-            "/jetauto_1/rtabmap/cloud_map",
-            PointCloud2,
-            self.pointcloud_callback,
-            queue_size=1
-        )
-
-        self.received = False
-
-    def pointcloud_callback(self, msg):
-
-        if self.received:
-            return
-
-        self.received = True
-
-        rospy.loginfo("Received PointCloud2")
-
-        print("\n========== POINT CLOUD INFO ==========")
-
-        print("Frame ID :", msg.header.frame_id)
-        print("Width    :", msg.width)
-        print("Height   :", msg.height)
-        print("Fields   :", [field.name for field in msg.fields])
-        print("Point step:", msg.point_step)
-        print("Row step  :", msg.row_step)
-        print("Dense     :", msg.is_dense)
-
-        print("\n========== FIRST 10 POINTS ==========")
-
-        count = 0
-
-        for point in pc2.read_points(
-                msg,
-                field_names=("x", "y", "z", "rgb"),
-                skip_nans=False):
-
-            print(
-                "Point {}: X={:.4f}, Y={:.4f}, Z={:.4f}, RGB={}".format(
-                    count,
-                    point[0],
-                    point[1],
-                    point[2],
-                    point[3]
-                )
-            )
-
-            count += 1
-
-            if count >= 10:
-                break
-
-        print("\n=====================================\n")
-
-
-def main():
-
-    rospy.init_node(
-        "pointcloud_reader",
-        anonymous=True
-    )
-
-    PointCloudReader()
-
-    rospy.spin()
-
-
-if __name__ == "__main__":
-    main()
-```
-phase 1 completed 
-
-<img width="954" height="817" alt="image" src="https://github.com/user-attachments/assets/0fcb97ca-a0c0-4b6b-8e82-bdc1bd3bb348" />
----
-for phase 2 
-
-we have to make some changes as we are going to remove those invalid points that we intentionally let slide in.
-
-nano ~/catkin_ws/src/pointcloud_segmentation/scripts/pointcloud_reader.py
-
-```
-#!/usr/bin/env python
-
-import rospy
-import math
-import sensor_msgs.point_cloud2 as pc2
-from sensor_msgs.msg import PointCloud2
-
-
-class PointCloudReader:
-
-    def __init__(self):
-
-        self.subscriber = rospy.Subscriber(
-            "/jetauto_1/rtabmap/cloud_map",
-            PointCloud2,
-            self.pointcloud_callback,
-            queue_size=1
-        )
-
-        self.received = False
-
-    def pointcloud_callback(self, msg):
-
-        # Process only the first received message
-        if self.received:
-            return
-
-        self.received = True
-
-        rospy.loginfo("Received PointCloud2")
-
-        # -----------------------------------------
-        # Point Cloud Information
-        # -----------------------------------------
-
-        print("\n========== POINT CLOUD INFO ==========")
-
-        print("Frame ID :", msg.header.frame_id)
-        print("Width    :", msg.width)
-        print("Height   :", msg.height)
-
-        print(
-            "Fields   :",
-            [field.name for field in msg.fields]
-        )
-
-        print("Point step:", msg.point_step)
-        print("Row step  :", msg.row_step)
-        print("Dense     :", msg.is_dense)
-
-        # -----------------------------------------
-        # Point Cloud Processing
-        # -----------------------------------------
-
-        print("\n========== POINT CLOUD PROCESSING ==========")
-
-        total_points = 0
-        valid_points = 0
-        invalid_points = 0
-
-        sample_count = 0
-
-        # Read individual points from PointCloud2
-        for point in pc2.read_points(
-                msg,
-                field_names=("x", "y", "z", "rgb"),
-                skip_nans=False):
-
-            total_points += 1
-
-            x = point[0]
-            y = point[1]
-            z = point[2]
-            rgb = point[3]
-
-            # -----------------------------------------
-            # Check XYZ validity
-            #
-            # Python 2.7 does not have math.isfinite().
-            # Therefore check NaN and infinity separately.
-            # -----------------------------------------
-
-            if (
-                math.isnan(x) or math.isinf(x) or
-                math.isnan(y) or math.isinf(y) or
-                math.isnan(z) or math.isinf(z)
-            ):
-
-                invalid_points += 1
-                continue
-
-            # Point has valid XYZ
-            valid_points += 1
-
-            # Print only first 10 valid points
-            if sample_count < 10:
-
-                print(
-                    "Valid Point {}: "
-                    "X={:.4f}, "
-                    "Y={:.4f}, "
-                    "Z={:.4f}, "
-                    "RGB={}".format(
-                        sample_count,
-                        x,
-                        y,
-                        z,
-                        rgb
-                    )
-                )
-
-                sample_count += 1
-
-        # -----------------------------------------
-        # Statistics
-        # -----------------------------------------
-
-        print("\n========== POINT STATISTICS ==========")
-
-        print("Total points   :", total_points)
-        print("Valid XYZ      :", valid_points)
-        print("Invalid XYZ    :", invalid_points)
-
-        print("======================================\n")
-
-
-def main():
-
-    # Initialize ROS node
-    rospy.init_node(
-        "pointcloud_reader",
-        anonymous=True
-    )
-
-    # Create subscriber
-    PointCloudReader()
-
-    # Keep node running
-    rospy.spin()
-
-
-if __name__ == "__main__":
-    main()
-```
-Ctrl + O
-Enter
-Ctrl + X
-
-run it using 
-
-chmod +x ~/catkin_ws/src/pointcloud_segmentation/scripts/pointcloud_reader.py
+```bash
+cd ~/catkin_ws
+catkin_make
 source ~/catkin_ws/devel/setup.bash
-rosrun pointcloud_segmentation pointcloud_reader.py
-
-<img width="930" height="670" alt="image" src="https://github.com/user-attachments/assets/0feff709-d6a9-41f1-9670-e09d4943c9a7" />
-
-phase 2 is completed 
-
-So for this particular RTAB-Map cloud:
-
-818 points received
-818 have valid X/Y/Z
-0 invalid XYZ points
-RGB = nan is present, but we're correctly not rejecting points because of RGB, since we're doing geometric segmentation.
----
-
-phase 3 - Downsampling 
-need to change the code again
-nano ~/catkin_ws/src/pointcloud_segmentation/scripts/pointcloud_reader.py
-
 ```
-#!/usr/bin/env python
 
-import rospy
-import math
-import numpy as np
+**Make the script executable:**
 
-import sensor_msgs.point_cloud2 as pc2
-from sensor_msgs.msg import PointCloud2
-
-
-class PointCloudReader:
-
-    def __init__(self):
-
-        self.subscriber = rospy.Subscriber(
-            "/jetauto_1/camera/depth/points",
-            PointCloud2,
-            self.pointcloud_callback,
-            queue_size=1
-        )
-
-        self.received = False
-
-    def voxel_downsample(self, points, voxel_size):
-
-        """
-        Voxel-grid downsampling.
-
-        Points are grouped into 3D voxels.
-        One representative point (centroid) is
-        calculated for each occupied voxel.
-        """
-
-        if len(points) == 0:
-            return points
-
-        # Calculate voxel coordinates
-        voxel_indices = np.floor(
-            points / voxel_size
-        ).astype(np.int32)
-
-        # Find unique voxels
-        unique_voxels, inverse_indices = np.unique(
-            voxel_indices,
-            axis=0,
-            return_inverse=True
-        )
-
-        # Allocate array for downsampled points
-        downsampled = np.zeros(
-            (len(unique_voxels), 3),
-            dtype=np.float32
-        )
-
-        # Calculate centroid of each voxel
-        for i in range(len(unique_voxels)):
-
-            voxel_points = points[
-                inverse_indices == i
-            ]
-
-            downsampled[i] = np.mean(
-                voxel_points,
-                axis=0
-            )
-
-        return downsampled
-
-    def pointcloud_callback(self, msg):
-
-        # Process only the first received cloud
-        if self.received:
-            return
-
-        self.received = True
-
-        rospy.loginfo(
-            "Received Astra PointCloud2"
-        )
-
-        # ==================================================
-        # POINT CLOUD INFORMATION
-        # ==================================================
-
-        print("\n========== POINT CLOUD INFO ==========")
-
-        print(
-            "Topic    : /jetauto_1/camera/depth/points"
-        )
-
-        print(
-            "Frame ID :",
-            msg.header.frame_id
-        )
-
-        print(
-            "Width    :",
-            msg.width
-        )
-
-        print(
-            "Height   :",
-            msg.height
-        )
-
-        print(
-            "Fields   :",
-            [field.name for field in msg.fields]
-        )
-
-        print(
-            "Point step:",
-            msg.point_step
-        )
-
-        print(
-            "Row step  :",
-            msg.row_step
-        )
-
-        print(
-            "Dense     :",
-            msg.is_dense
-        )
-
-        # ==================================================
-        # READ AND VALIDATE POINTS
-        # ==================================================
-
-        print(
-            "\n========== READING POINTS =========="
-        )
-
-        points = []
-
-        total_points = 0
-        invalid_points = 0
-
-        for point in pc2.read_points(
-                msg,
-                field_names=("x", "y", "z"),
-                skip_nans=False):
-
-            total_points += 1
-
-            x = point[0]
-            y = point[1]
-            z = point[2]
-
-            # Python 2.7 compatible validity check
-            if (
-                math.isnan(x) or math.isinf(x) or
-                math.isnan(y) or math.isinf(y) or
-                math.isnan(z) or math.isinf(z)
-            ):
-                invalid_points += 1
-                continue
-
-            points.append(
-                [x, y, z]
-            )
-
-        # ==================================================
-        # NUMPY ARRAY
-        # ==================================================
-
-        points = np.array(
-            points,
-            dtype=np.float32
-        )
-
-        valid_points = len(points)
-
-        print(
-            "Total points   :",
-            total_points
-        )
-
-        print(
-            "Valid XYZ      :",
-            valid_points
-        )
-
-        print(
-            "Invalid XYZ    :",
-            invalid_points
-        )
-
-        if valid_points == 0:
-
-            rospy.logwarn(
-                "No valid XYZ points were found."
-            )
-
-            return
-
-        # ==================================================
-        # ORIGINAL CLOUD INFORMATION
-        # ==================================================
-
-        print(
-            "\n========== ORIGINAL CLOUD =========="
-        )
-
-        print(
-            "Array shape :",
-            points.shape
-        )
-
-        print(
-            "Array dtype :",
-            points.dtype
-        )
-
-        # ==================================================
-        # ORIGINAL BOUNDS
-        # ==================================================
-
-        min_x = np.min(points[:, 0])
-        max_x = np.max(points[:, 0])
-
-        min_y = np.min(points[:, 1])
-        max_y = np.max(points[:, 1])
-
-        min_z = np.min(points[:, 2])
-        max_z = np.max(points[:, 2])
-
-        print(
-            "X range : {:.4f} m".format(
-                max_x - min_x
-            )
-        )
-
-        print(
-            "Y range : {:.4f} m".format(
-                max_y - min_y
-            )
-        )
-
-        print(
-            "Z range : {:.4f} m".format(
-                max_z - min_z
-            )
-        )
-
-        # ==================================================
-        # VOXEL DOWNSAMPLING
-        # ==================================================
-
-        voxel_size = 0.02
-
-        print(
-            "\n========== VOXEL DOWNSAMPLING =========="
-        )
-
-        print(
-            "Voxel size : {:.3f} m".format(
-                voxel_size
-            )
-        )
-
-        downsampled_points = self.voxel_downsample(
-            points,
-            voxel_size
-        )
-
-        downsampled_count = len(
-            downsampled_points
-        )
-
-        # ==================================================
-        # DOWNSAMPLING RESULTS
-        # ==================================================
-
-        print(
-            "Original valid points :",
-            valid_points
-        )
-
-        print(
-            "Downsampled points    :",
-            downsampled_count
-        )
-
-        reduction = (
-            1.0 -
-            float(downsampled_count) /
-            float(valid_points)
-        ) * 100.0
-
-        print(
-            "Point reduction       : {:.2f}%".format(
-                reduction
-            )
-        )
-
-        # ==================================================
-        # DOWNSAMPLED BOUNDS
-        # ==================================================
-
-        print(
-            "\n========== DOWNSAMPLED BOUNDS =========="
-        )
-
-        down_min_x = np.min(
-            downsampled_points[:, 0]
-        )
-
-        down_max_x = np.max(
-            downsampled_points[:, 0]
-        )
-
-        down_min_y = np.min(
-            downsampled_points[:, 1]
-        )
-
-        down_max_y = np.max(
-            downsampled_points[:, 1]
-        )
-
-        down_min_z = np.min(
-            downsampled_points[:, 2]
-        )
-
-        down_max_z = np.max(
-            downsampled_points[:, 2]
-        )
-
-        print(
-            "Minimum X : {:.4f} m".format(
-                down_min_x
-            )
-        )
-
-        print(
-            "Maximum X : {:.4f} m".format(
-                down_max_x
-            )
-        )
-
-        print(
-            "Minimum Y : {:.4f} m".format(
-                down_min_y
-            )
-        )
-
-        print(
-            "Maximum Y : {:.4f} m".format(
-                down_max_y
-            )
-        )
-
-        print(
-            "Minimum Z : {:.4f} m".format(
-                down_min_z
-            )
-        )
-
-        print(
-            "Maximum Z : {:.4f} m".format(
-                down_max_z
-            )
-        )
-
-        # ==================================================
-        # SAMPLE DOWNSAMPLED POINTS
-        # ==================================================
-
-        print(
-            "\n========== DOWNSAMPLED SAMPLES =========="
-        )
-
-        sample_count = min(
-            10,
-            downsampled_count
-        )
-
-        for i in range(sample_count):
-
-            print(
-                "Point {}: X={:.4f}, "
-                "Y={:.4f}, "
-                "Z={:.4f}".format(
-                    i,
-                    downsampled_points[i][0],
-                    downsampled_points[i][1],
-                    downsampled_points[i][2]
-                )
-            )
-
-        print(
-            "\n==========================================\n"
-        )
-
-
-def main():
-
-    rospy.init_node(
-        "pointcloud_reader",
-        anonymous=True
-    )
-
-    PointCloudReader()
-
-    rospy.spin()
-
-
-if __name__ == "__main__":
-    main()
-```
-```
-jetauto@jetauto-desktop:~/catkin_ws/src/pointcloud_segmentation/scripts$ rosrun pointcloud_segmentation pointcloud_reader.py
-[INFO] [1786705846.004574]: Received Astra PointCloud2
-
-========== POINT CLOUD INFO ==========
-Topic    : /jetauto_1/camera/depth/points
-('Frame ID :', 'camera_rgb_optical_frame')
-('Width    :', 640)
-('Height   :', 480)
-('Fields   :', ['x', 'y', 'z'])
-('Point step:', 16)
-('Row step  :', 10240)
-('Dense     :', False)
-
-========== READING POINTS ==========
-('Total points   :', 307200)
-('Valid XYZ      :', 252836)
-('Invalid XYZ    :', 54364)
-
-========== ORIGINAL CLOUD ==========
-('Array shape :', (252836, 3))
-('Array dtype :', dtype('float32'))
-X range : 1.5394 m
-Y range : 1.4364 m
-Z range : 1.3180 m
-
-========== VOXEL DOWNSAMPLING ==========
-Voxel size : 0.020 m
-('Original valid points :', 252836)
-('Downsampled points    :', 7229)
-Point reduction       : 97.14%
-
-========== DOWNSAMPLED BOUNDS ==========
-Minimum X : -1.0938 m
-Maximum X : 0.4403 m
-Minimum Y : -0.6618 m
-Maximum Y : 0.7667 m
-Minimum Z : 0.8525 m
-Maximum Z : 2.1660 m
-
-========== DOWNSAMPLED SAMPLES ==========
-Point 0: X=0.0018, Y=0.0044, Z=1.5390
-Point 1: X=0.0100, Y=0.0099, Z=1.5460
-Point 2: X=0.0099, Y=0.0299, Z=1.5460
-Point 3: X=0.0053, Y=0.0557, Z=1.5390
-Point 4: X=0.0110, Y=0.0485, Z=1.5460
-Point 5: X=0.0033, Y=0.0686, Z=1.5390
-Point 6: X=0.0125, Y=0.0706, Z=1.5460
-Point 7: X=0.0178, Y=0.0951, Z=1.5390
-Point 8: X=0.0097, Y=0.0901, Z=1.5460
-Point 9: X=0.0079, Y=0.1145, Z=1.5390
-
-==========================================
-
-```
----
-
-new code for clustering 
-
-```
-#!/usr/bin/env python
-
-import rospy
-import math
-import numpy as np
-
-import sensor_msgs.point_cloud2 as pc2
-from sensor_msgs.msg import PointCloud2
-
-from sklearn.neighbors import NearestNeighbors
-
-
-class PointCloudSegmentation:
-
-    def __init__(self):
-
-        self.subscriber = rospy.Subscriber(
-            "/jetauto_1/camera/depth/points",
-            PointCloud2,
-            self.pointcloud_callback,
-            queue_size=1
-        )
-
-        self.received = False
-
-        # ==============================================
-        # PARAMETERS
-        # ==============================================
-
-        self.voxel_size = 0.02
-
-        self.cluster_tolerance = 0.05
-
-        self.min_cluster_size = 20
-
-        self.max_cluster_size = 5000
-
-    # ==================================================
-    # VOXEL DOWNSAMPLING
-    # ==================================================
-
-    def voxel_downsample(self, points):
-
-        if len(points) == 0:
-            return points
-
-        voxel_indices = np.floor(
-            points / self.voxel_size
-        ).astype(np.int32)
-
-        unique_voxels, inverse_indices = np.unique(
-            voxel_indices,
-            axis=0,
-            return_inverse=True
-        )
-
-        downsampled = np.zeros(
-            (len(unique_voxels), 3),
-            dtype=np.float32
-        )
-
-        for i in range(len(unique_voxels)):
-
-            voxel_points = points[
-                inverse_indices == i
-            ]
-
-            downsampled[i] = np.mean(
-                voxel_points,
-                axis=0
-            )
-
-        return downsampled
-
-    # ==================================================
-    # EUCLIDEAN CLUSTERING
-    # ==================================================
-
-    def euclidean_clustering(self, points):
-
-        number_of_points = len(points)
-
-        if number_of_points == 0:
-            return []
-
-        print(
-            "\n========== NEAREST NEIGHBOR SEARCH =========="
-        )
-
-        print(
-            "Number of points :",
-            number_of_points
-        )
-
-        print(
-            "Cluster tolerance : {:.3f} m".format(
-                self.cluster_tolerance
-            )
-        )
-
-        # ----------------------------------------------
-        # Build nearest-neighbor search structure
-        # ----------------------------------------------
-
-        neighbors_model = NearestNeighbors(
-            radius=self.cluster_tolerance,
-            algorithm="kd_tree"
-        )
-
-        neighbors_model.fit(points)
-
-        # Find neighbors within tolerance
-        neighbor_indices = neighbors_model.radius_neighbors(
-            points,
-            return_distance=False
-        )
-
-        # ----------------------------------------------
-        # Track visited points
-        # ----------------------------------------------
-
-        visited = np.zeros(
-            number_of_points,
-            dtype=np.bool
-        )
-
-        clusters = []
-
-        # ----------------------------------------------
-        # Region expansion
-        # ----------------------------------------------
-
-        for point_index in range(number_of_points):
-
-            if visited[point_index]:
-                continue
-
-            # Start a new cluster
-            cluster = []
-
-            queue = [point_index]
-
-            visited[point_index] = True
-
-            while len(queue) > 0:
-
-                current_index = queue.pop()
-
-                cluster.append(current_index)
-
-                # Check all neighboring points
-                for neighbor_index in neighbor_indices[
-                        current_index]:
-
-                    neighbor_index = int(
-                        neighbor_index
-                    )
-
-                    if not visited[neighbor_index]:
-
-                        visited[neighbor_index] = True
-
-                        queue.append(
-                            neighbor_index
-                        )
-
-            cluster_size = len(cluster)
-
-            # ------------------------------------------
-            # Apply cluster size limits
-            # ------------------------------------------
-
-            if (
-                cluster_size >= self.min_cluster_size
-                and
-                cluster_size <= self.max_cluster_size
-            ):
-
-                clusters.append(cluster)
-
-        return clusters
-
-    # ==================================================
-    # POINT CLOUD CALLBACK
-    # ==================================================
-
-    def pointcloud_callback(self, msg):
-
-        if self.received:
-            return
-
-        self.received = True
-
-        rospy.loginfo(
-            "Received Astra PointCloud2"
-        )
-
-        # ==============================================
-        # POINT CLOUD INFORMATION
-        # ==============================================
-
-        print(
-            "\n========== POINT CLOUD INFO =========="
-        )
-
-        print(
-            "Topic    : /jetauto_1/camera/depth/points"
-        )
-
-        print(
-            "Frame ID :",
-            msg.header.frame_id
-        )
-
-        print(
-            "Width    :",
-            msg.width
-        )
-
-        print(
-            "Height   :",
-            msg.height
-        )
-
-        print(
-            "Fields   :",
-            [field.name for field in msg.fields]
-        )
-
-        print(
-            "Point step:",
-            msg.point_step
-        )
-
-        print(
-            "Row step  :",
-            msg.row_step
-        )
-
-        print(
-            "Dense     :",
-            msg.is_dense
-        )
-
-        # ==============================================
-        # READ VALID XYZ POINTS
-        # ==============================================
-
-        print(
-            "\n========== READING POINTS =========="
-        )
-
-        points = []
-
-        total_points = 0
-        invalid_points = 0
-
-        for point in pc2.read_points(
-                msg,
-                field_names=("x", "y", "z"),
-                skip_nans=False):
-
-            total_points += 1
-
-            x = point[0]
-            y = point[1]
-            z = point[2]
-
-            if (
-                math.isnan(x) or math.isinf(x) or
-                math.isnan(y) or math.isinf(y) or
-                math.isnan(z) or math.isinf(z)
-            ):
-
-                invalid_points += 1
-
-                continue
-
-            points.append(
-                [x, y, z]
-            )
-
-        points = np.array(
-            points,
-            dtype=np.float32
-        )
-
-        valid_points = len(points)
-
-        print(
-            "Total points   :",
-            total_points
-        )
-
-        print(
-            "Valid XYZ      :",
-            valid_points
-        )
-
-        print(
-            "Invalid XYZ    :",
-            invalid_points
-        )
-
-        if valid_points == 0:
-
-            rospy.logwarn(
-                "No valid XYZ points found."
-            )
-
-            return
-
-        # ==============================================
-        # DOWNSAMPLING
-        # ==============================================
-
-        print(
-            "\n========== VOXEL DOWNSAMPLING =========="
-        )
-
-        print(
-            "Voxel size : {:.3f} m".format(
-                self.voxel_size
-            )
-        )
-
-        downsampled_points = self.voxel_downsample(
-            points
-        )
-
-        downsampled_count = len(
-            downsampled_points
-        )
-
-        reduction = (
-            1.0 -
-            float(downsampled_count) /
-            float(valid_points)
-        ) * 100.0
-
-        print(
-            "Original valid points :",
-            valid_points
-        )
-
-        print(
-            "Downsampled points    :",
-            downsampled_count
-        )
-
-        print(
-            "Point reduction       : {:.2f}%".format(
-                reduction
-            )
-        )
-
-        # ==============================================
-        # EUCLIDEAN CLUSTERING
-        # ==============================================
-
-        print(
-            "\n========== EUCLIDEAN CLUSTERING =========="
-        )
-
-        print(
-            "Cluster tolerance : {:.3f} m".format(
-                self.cluster_tolerance
-            )
-        )
-
-        print(
-            "Minimum cluster size :",
-            self.min_cluster_size
-        )
-
-        print(
-            "Maximum cluster size :",
-            self.max_cluster_size
-        )
-
-        clusters = self.euclidean_clustering(
-            downsampled_points
-        )
-
-        # ==============================================
-        # CLUSTER RESULTS
-        # ==============================================
-
-        print(
-            "\n========== CLUSTER RESULTS =========="
-        )
-
-        print(
-            "Number of clusters :",
-            len(clusters)
-        )
-
-        clustered_points = 0
-
-        for i, cluster in enumerate(clusters):
-
-            cluster_size = len(cluster)
-
-            clustered_points += cluster_size
-
-            print(
-                "Cluster {:3d} : {:5d} points".format(
-                    i + 1,
-                    cluster_size
-                )
-            )
-
-        noise_points = (
-            downsampled_count -
-            clustered_points
-        )
-
-        print(
-            "\nClustered points :",
-            clustered_points
-        )
-
-        print(
-            "Noise/unclustered:",
-            noise_points
-        )
-
-        # ==============================================
-        # CLUSTER SIZE SUMMARY
-        # ==============================================
-
-        if len(clusters) > 0:
-
-            cluster_sizes = [
-                len(cluster)
-                for cluster in clusters
-            ]
-
-            print(
-                "\n========== CLUSTER SIZE SUMMARY =========="
-            )
-
-            print(
-                "Largest cluster :",
-                max(cluster_sizes)
-            )
-
-            print(
-                "Smallest cluster:",
-                min(cluster_sizes)
-            )
-
-            print(
-                "Average cluster : {:.2f}".format(
-                    np.mean(cluster_sizes)
-                )
-            )
-
-        print(
-            "\n============================================\n"
-        )
-
-
-def main():
-
-    rospy.init_node(
-        "pointcloud_segmentation",
-        anonymous=True
-    )
-
-    PointCloudSegmentation()
-
-    rospy.spin()
-
-
-if __name__ == "__main__":
-    main()
-```
+```bash
 chmod +x ~/catkin_ws/src/pointcloud_segmentation/scripts/pointcloud_reader.py
-source ~/catkin_ws/devel/setup.bash
+```
+
+**Run the segmentation node:**
+
+```bash
 rosrun pointcloud_segmentation pointcloud_reader.py
-
-```
-[INFO] [1786707714.537116]: Received Astra PointCloud2
-
-========== POINT CLOUD INFO ==========
-Topic    : /jetauto_1/camera/depth/points
-('Frame ID :', 'camera_rgb_optical_frame')
-('Width    :', 640)
-('Height   :', 480)
-('Fields   :', ['x', 'y', 'z'])
-('Point step:', 16)
-('Row step  :', 10240)
-('Dense     :', False)
-
-========== READING POINTS ==========
-('Total points   :', 307200)
-('Valid XYZ      :', 252648)
-('Invalid XYZ    :', 54552)
-
-========== VOXEL DOWNSAMPLING ==========
-Voxel size : 0.020 m
-('Original valid points :', 252648)
-('Downsampled points    :', 7079)
-Point reduction       : 97.20%
-
-========== EUCLIDEAN CLUSTERING ==========
-Cluster tolerance : 0.050 m
-('Minimum cluster size :', 20)
-('Maximum cluster size :', 5000)
-
-========== NEAREST NEIGHBOR SEARCH ==========
-('Number of points :', 7079)
-Cluster tolerance : 0.050 m
-
-========== CLUSTER RESULTS ==========
-('Number of clusters :', 9)
-Cluster   1 :  3912 points
-Cluster   2 :  1783 points
-Cluster   3 :   184 points
-Cluster   4 :   286 points
-Cluster   5 :   196 points
-Cluster   6 :   194 points
-Cluster   7 :   206 points
-Cluster   8 :   218 points
-Cluster   9 :    76 points
-('\nClustered points :', 7055)
-('Noise/unclustered:', 24)
-
-========== CLUSTER SIZE SUMMARY ==========
-('Largest cluster :', 3912)
-('Smallest cluster:', 76)
-Average cluster : 783.89
-
-============================================
 ```
 
+**Verify the input cloud:**
 
+```bash
+rostopic type /jetauto_1/camera/depth/points
+rostopic hz /jetauto_1/camera/depth/points
+```
 
+**Verify the segmented output cloud:**
+
+```bash
+rostopic type /pointcloud_segmentation/clusters
+rostopic info /pointcloud_segmentation/clusters
+rostopic hz /pointcloud_segmentation/clusters
+rostopic echo -n 1 /pointcloud_segmentation/clusters/fields
+```
+
+---
+
+## 19. Summary
+
+The project has progressed from raw RGB-D point-cloud acquisition to geometric object segmentation. The verified pipeline is:
+
+```text
+Astra RGB-D
+    ↓
+ROS PointCloud2
+    ↓
+Invalid XYZ removal
+    ↓
+NumPy conversion
+    ↓
+2 cm voxel downsampling
+    ↓
+5 cm Euclidean clustering
+    ↓
+Cluster geometry analysis
+    ↓
+Colored PointCloud2
+    ↓
+RViz visualization (in progress)
+```
+
+The core computational stages — acquisition, filtering, downsampling, clustering, and geometry extraction — are complete and verified. The remaining task is to make the colored PointCloud2 output fully compatible with RViz's color transformer and achieve stable visualization. Once that is resolved, the project can move on to systematic parameter evaluation and a comparison against alternative segmentation algorithms such as DBSCAN and region growing.
