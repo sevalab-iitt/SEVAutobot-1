@@ -96,10 +96,55 @@ MOT-related scripts
 
 System / Jetson
 
+```
+
+```
+
 storage cleanup commands
 CUDA checks
 TensorRT checks
 Python package checks
 GPU/CPU testing
 RAM/swap checks
+```
+```
+JetAuto_Project/
+│
+├── README.md
+│
+├── llamaJetsonNanoCUDA/
+│   ├── patches/
+│   │   └── llamaJetsonNanoCUDA.patch
+│   └── build_notes.md
+│
+├── ros/
+│   ├── camera/
+│   ├── lidar/
+│   ├── pointcloud/
+│   ├── slam/
+│   ├── object_detection/
+│   ├── robot_control/
+│   └── utilities/
+│
+├── scripts/
+│   ├── camera/
+│   ├── lidar/
+│   ├── pointcloud/
+│   ├── servo/
+│   └── system/
+│
+├── configs/
+│
+├── datasets/
+│
+└── docs/
+    ├── hardware.md
+    ├── software_setup.md
+    ├── camera.md
+    ├── lidar.md
+    ├── pointcloud.md
+    ├── slam.md
+    ├── yolov5.md
+    ├── servo.md
+    └── llama_cuda.md
 ```
