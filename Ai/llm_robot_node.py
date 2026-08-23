@@ -8,7 +8,7 @@ from geometry_msgs.msg import Twist
 
 LLM_URL = "http://127.0.0.1:8081/completion"
 
-DRY_RUN = True
+DRY_RUN = False
 
 MAX_DURATION = 5.0
 LINEAR_SPEED = 0.15
@@ -191,3 +191,34 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
 
         pass
+
+"""
+Save 
+Ctrl+O
+Enter
+Ctrl+X
+---
+chmod +x ~/catkin_ws/src/jetauto_llm/scripts/llm_robot_node.py
+---
+cd ~/catkin_ws
+catkin_make
+---
+source ~/catkin_ws/devel/setup.bash
+---
+rosrun jetauto_llm llm_robot_node.py
+
+and enter:
+Move forward for 2 seconds.
+
+output we got:-
+
+jetauto@jetauto-desktop:~/catkin_ws$ rosrun jetauto_llm llm_robot_node.py
+[INFO] [1787493942.577492]: LLM Robot Node started
+[INFO] [1787493942.583887]: DRY_RUN = True
+Enter robot command: Move forward for 2 seconds.
+[INFO] [1787493969.367135]: User command: Move forward for 2 seconds.
+[INFO] [1787493975.567392]: LLM response: {"action": "move", "direction": "forward", "duration": 2}
+[INFO] [1787493975.573785]: Parsed command: {"action": "move", "direction": "forward", "duration": 2}
+[INFO] [1787493975.579202]: [DRY RUN] Would execute: move forward for 2.0 seconds
+"""
+
