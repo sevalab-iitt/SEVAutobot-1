@@ -221,4 +221,17 @@ Enter robot command: Move forward for 2 seconds.
 [INFO] [1787493975.573785]: Parsed command: {"action": "move", "direction": "forward", "duration": 2}
 [INFO] [1787493975.579202]: [DRY RUN] Would execute: move forward for 2.0 seconds
 """
+---
 
+#Python Dependencies
+"""
+sudo apt-get update
+sudo apt-get install python-requests
+
+verify using:
+python -c "import requests; print(requests.__version__)"
+
+run: 
+source ~/catkin_ws/devel/setup.bash
+rosrun jetauto_llm llm_robot_node.py
+"""
