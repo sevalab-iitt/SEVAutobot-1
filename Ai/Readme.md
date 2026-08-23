@@ -352,7 +352,7 @@ The LLM should **not** be solely responsible for millisecond-level collision saf
 The original monolithic `scripts/llm_robot_node.py` is being refactored into modular components. The intended (target) structure is:
 
 ```
-jetauto_llm/
+Ai/
 ├── scripts/
 │   ├── llm_robot_node.py
 │   ├── robot/
