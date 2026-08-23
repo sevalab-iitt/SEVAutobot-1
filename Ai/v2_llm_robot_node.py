@@ -2,88 +2,199 @@
 # -*- coding: utf-8 -*-
 
 # ============================================================
-# JETAUTO LLM ROBOT INTELLIGENCE
-# ROS Melodic / Python 2.7
+# JETAUTO LLM ROBOT NODE
 #
-# STAGE 1  - LLM SERVER COMMUNICATION
-# STAGE 2  - NATURAL LANGUAGE -> ROBOT COMMAND
-# STAGE 3  - LiDAR PERCEPTION
-# STAGE 4  - REAL ROBOT CONTROL
-# STAGE 5  - MULTI-COMMAND SEQUENCES
-# STAGE 6  - LiDAR SAFETY LAYER
-# STAGE 7  - ROBOT STATUS / AWARENESS
-# STAGE 8  - NATURAL LANGUAGE ROBOT INTERFACE
+# STAGE 1  - Basic LLM robot commands
+# STAGE 2  - LiDAR integration
+# STAGE 3  - Real robot movement
+# STAGE 4  - Multi-command execution
+# STAGE 5  - Robust JSON parsing
+# STAGE 6  - Local llama.cpp / Qwen integration
+# STAGE 7  - Robot status / LiDAR queries
+# STAGE 8  - Sequential command execution
+# STAGE 9  - LiDAR safety + autonomous obstacle avoidance
 #
+# IMPORTANT:
+# The LLM decides WHAT the robot should do.
+# The safety controller decides WHETHER it is safe to do it.
+#
+# Architecture:
+#
+# USER
+#   |
+#   v
+# LOCAL QWEN / LLAMA.CPP
+#   |
+#   v
+# COMMAND PARSER
+#   |
+#   +----------------------+
+#   |                      |
+#   v                      v
+# NORMAL COMMAND       AUTONOMOUS MODE
+#   |                      |
+#   +----------+-----------+
+#              |
+#              v
+#       SAFETY CONTROLLER
+#              |
+#           /scan
+#              |
+#       LiDAR obstacle check
+#              |
+#              v
+#     /jetauto_controller/cmd_vel
+#
+# Python 2 / ROS Melodic compatible
 # ============================================================
 
-from __future__ import print_function
+
+# ============================================================
+# STAGE 1 - BASIC IMPORTS
+# ============================================================
 
 import rospy
-import requests
 import json
-import time
 import math
+import time
+import re
+import requests
 
 from geometry_msgs.msg import Twist
 from sensor_msgs.msg import LaserScan
+from std_msgs.msg import Bool
 
 
 # ============================================================
-# CONFIGURATION
+# STAGE 2 - CONFIGURATION
 # ============================================================
+
+# ------------------------------------------------------------
+# LLM SERVER
+# ------------------------------------------------------------
 
 LLM_URL = "http://127.0.0.1:8081/completion"
 
-# REAL ROBOT
-DRY_RUN = False
-
-# Movement speeds
-LINEAR_SPEED = 0.10
-ANGULAR_SPEED = 0.50
-
-# Safety distance in meters
-SAFETY_DISTANCE = 0.40
-
-# Maximum allowed command duration
-MAX_DURATION = 10.0
-
-# LLM settings
 LLM_TIMEOUT = 60
 
-# LiDAR sectors
-FRONT_HALF_ANGLE = 20.0
-SIDE_HALF_ANGLE = 35.0
+
+# ------------------------------------------------------------
+# ROBOT CONTROL
+# ------------------------------------------------------------
+
+# IMPORTANT:
+# False = REAL ROBOT
+# True  = simulation / dry run
+
+DRY_RUN = False
+
+
+# ------------------------------------------------------------
+# ROBOT SPEED
+# ------------------------------------------------------------
+
+LINEAR_SPEED = 0.20
+TURN_SPEED = 0.60
 
 
 # ============================================================
-# STAGE 1
-# LLM SERVER COMMUNICATION
+# STAGE 9 - LIDAR SAFETY PARAMETERS
 # ============================================================
 
-class LLMRobotNode(object):
+# These follow the obstacle avoidance approach from
+# the existing JetAuto LiDAR controller.
 
-    def __init__(self):
+FRONT_STOP_DIST = 0.50
 
-        rospy.init_node(
-            "llm_robot_node",
-            anonymous=False
-        )
+BOXED_IN_DIST = 0.40
 
-        rospy.loginfo("======================================")
-        rospy.loginfo("JETAUTO LLM ROBOT INTELLIGENCE")
-        rospy.loginfo("======================================")
+REVERSE_TIME = 0.80
 
-        rospy.loginfo("LLM URL: %s", LLM_URL)
+TURN_TIME = 0.70
 
-        if DRY_RUN:
-            rospy.loginfo("DRY_RUN = True")
-        else:
-            rospy.loginfo("DRY_RUN = False")
-            rospy.loginfo("REAL ROBOT CONTROL ENABLED")
+CONTROL_RATE_HZ = 10
 
-        # ====================================================
-        # STAGE 4 - ROS MOTOR CONTROL
-        # ====================================================
+
+# ------------------------------------------------------------
+# IMPORTANT:
+# Your robot's measured LiDAR angle convention:
+#
+# FRONT = +180 / -180
+# BACK  = 0
+# LEFT  = -90
+# RIGHT = +90
+# ------------------------------------------------------------
+
+FRONT_CENTER = 180.0
+LEFT_CENTER = -90.0
+RIGHT_CENTER = 90.0
+
+SECTOR_HALF_WIDTH = 30.0
+
+
+# ------------------------------------------------------------
+# Autonomous movement
+# ------------------------------------------------------------
+
+AUTONOMOUS_FORWARD_SPEED = 0.20
+
+
+# ------------------------------------------------------------
+# Safety behavior
+# ------------------------------------------------------------
+
+# If LiDAR has no valid front reading, we DO NOT automatically
+# stop the robot in autonomous mode because your current LiDAR
+# can return inf in portions of the scan.
+#
+# However, the user can change this to True if desired.
+#
+# Recommended for first testing:
+# False
+
+STOP_IF_FRONT_INVALID = False
+
+
+# ============================================================
+# STAGE 2 - ANGLE FUNCTIONS
+# ============================================================
+
+def normalize_deg(angle):
+    """
+    Normalize angle to (-180, 180].
+    """
+
+    while angle > 180.0:
+        angle -= 360.0
+
+    while angle <= -180.0:
+        angle += 360.0
+
+    return angle
+
+
+def angular_distance(a, b):
+    """
+    Smallest absolute difference between two angles.
+    """
+
+    return abs(normalize_deg(a - b))
+
+
+# ============================================================
+# STAGE 2 + STAGE 9
+# LIDAR SAFETY CONTROLLER
+# ============================================================
+
+class LidarSafetyController(object):
+
+    def __init__(self, parent):
+
+        self.parent = parent
+
+        # ----------------------------------------------------
+        # ROS publisher
+        # ----------------------------------------------------
 
         self.cmd_pub = rospy.Publisher(
             "/jetauto_controller/cmd_vel",
@@ -91,280 +202,1036 @@ class LLMRobotNode(object):
             queue_size=10
         )
 
-        # ====================================================
-        # STAGE 3 - LiDAR
-        # ====================================================
+        # ----------------------------------------------------
+        # LiDAR subscriber
+        # ----------------------------------------------------
 
-        self.scan_sub = rospy.Subscriber(
+        rospy.Subscriber(
             "/scan",
             LaserScan,
             self.scan_callback,
             queue_size=1
         )
 
-        self.scan_msg = None
+        # ----------------------------------------------------
+        # Pause subscriber
+        # ----------------------------------------------------
 
-        # Current robot state
-        self.current_command = "stopped"
-        self.is_moving = False
+        rospy.Subscriber(
+            "/auto_explore/pause",
+            Bool,
+            self.pause_callback,
+            queue_size=1
+        )
 
-        rospy.sleep(1.0)
+        # ----------------------------------------------------
+        # LiDAR values
+        # ----------------------------------------------------
 
-        # Make sure robot starts stopped
-        self.stop_robot()
+        self.front_min = float("inf")
+        self.left_min = float("inf")
+        self.right_min = float("inf")
 
-        rospy.loginfo("Robot intelligence node ready.")
+        self.scan_ready = False
+
+        # ----------------------------------------------------
+        # Autonomous state
+        #
+        # FORWARD
+        # AVOID_TURN
+        # REVERSE
+        # PAUSED
+        # ----------------------------------------------------
+
+        self.state = "FORWARD"
+
+        self.state_until = 0.0
+
+        # +1 = left
+        # -1 = right
+
+        self.turn_direction = 1.0
+
+        self.paused = False
+
+        self.rate = rospy.Rate(CONTROL_RATE_HZ)
 
     # ========================================================
-    # STAGE 3
-    # LiDAR CALLBACK
+    # STAGE 9 - LIDAR CALLBACK
     # ========================================================
 
     def scan_callback(self, msg):
 
-        self.scan_msg = msg
+        front_values = []
+        left_values = []
+        right_values = []
+
+        for i, distance in enumerate(msg.ranges):
+
+            # ------------------------------------------------
+            # Ignore invalid values
+            # ------------------------------------------------
+
+            if distance <= 0.0:
+                continue
+
+            if distance > msg.range_max:
+                continue
+
+            if math.isinf(distance):
+                continue
+
+            if math.isnan(distance):
+                continue
+
+            # ------------------------------------------------
+            # Convert index to angle
+            # ------------------------------------------------
+
+            angle_rad = (
+                msg.angle_min +
+                i * msg.angle_increment
+            )
+
+            angle_deg = math.degrees(angle_rad)
+
+            angle_deg = normalize_deg(angle_deg)
+
+            # ------------------------------------------------
+            # FRONT
+            # ------------------------------------------------
+
+            if angular_distance(
+                    angle_deg,
+                    FRONT_CENTER
+            ) <= SECTOR_HALF_WIDTH:
+
+                front_values.append(distance)
+
+            # ------------------------------------------------
+            # LEFT
+            # ------------------------------------------------
+
+            elif angular_distance(
+                    angle_deg,
+                    LEFT_CENTER
+            ) <= SECTOR_HALF_WIDTH:
+
+                left_values.append(distance)
+
+            # ------------------------------------------------
+            # RIGHT
+            # ------------------------------------------------
+
+            elif angular_distance(
+                    angle_deg,
+                    RIGHT_CENTER
+            ) <= SECTOR_HALF_WIDTH:
+
+                right_values.append(distance)
+
+        # ----------------------------------------------------
+        # Minimum distance in each sector
+        # ----------------------------------------------------
+
+        if front_values:
+            self.front_min = min(front_values)
+        else:
+            self.front_min = float("inf")
+
+        if left_values:
+            self.left_min = min(left_values)
+        else:
+            self.left_min = float("inf")
+
+        if right_values:
+            self.right_min = min(right_values)
+        else:
+            self.right_min = float("inf")
+
+        self.scan_ready = True
 
     # ========================================================
-    # STAGE 3
-    # SAFE FLOAT CHECK
-    #
-    # Python 2.7 compatible.
-    # We DO NOT use rospy.isinf() or math.isfinite().
+    # STAGE 9 - PAUSE
     # ========================================================
 
-    def valid_range(self, value):
+    def pause_callback(self, msg):
 
-        try:
-            value = float(value)
+        self.paused = msg.data
 
-            if value <= 0:
-                return False
+        if self.paused:
 
-            if value != value:
-                return False
+            rospy.logwarn(
+                "[LIDAR SAFETY] PAUSED"
+            )
 
-            if value == float("inf"):
-                return False
+            self.stop()
 
-            if value == float("-inf"):
-                return False
+        else:
+
+            rospy.loginfo(
+                "[LIDAR SAFETY] RESUMED"
+            )
+
+            self.state = "FORWARD"
+
+    # ========================================================
+    # STAGE 9 - PUBLISH TWIST
+    # ========================================================
+
+    def publish_twist(self, linear, angular):
+
+        if self.parent.dry_run:
+
+            rospy.loginfo(
+                "[DRY RUN] Twist linear=%.2f angular=%.2f",
+                linear,
+                angular
+            )
+
+            return
+
+        msg = Twist()
+
+        msg.linear.x = linear
+        msg.linear.y = 0.0
+        msg.linear.z = 0.0
+
+        msg.angular.x = 0.0
+        msg.angular.y = 0.0
+        msg.angular.z = angular
+
+        self.cmd_pub.publish(msg)
+
+    # ========================================================
+    # STAGE 9 - STOP
+    # ========================================================
+
+    def stop(self):
+
+        self.publish_twist(
+            0.0,
+            0.0
+        )
+
+    # ========================================================
+    # STAGE 9 - CHOOSE TURN DIRECTION
+    # ========================================================
+
+    def choose_turn_direction(self):
+
+        if self.left_min > self.right_min:
+
+            return 1.0
+
+        else:
+
+            return -1.0
+
+    # ========================================================
+    # STAGE 9 - PRINT STATUS
+    # ========================================================
+
+    def get_status(self):
+
+        return {
+            "front": self.front_min,
+            "left": self.left_min,
+            "right": self.right_min
+        }
+
+    # ========================================================
+    # STAGE 9 - FRONT SAFETY CHECK
+    # ========================================================
+
+    def front_blocked(self):
+
+        if not self.scan_ready:
 
             return True
 
-        except Exception:
+        if math.isinf(self.front_min):
+
+            if STOP_IF_FRONT_INVALID:
+
+                return True
+
             return False
 
-    # ========================================================
-    # STAGE 3
-    # GET LiDAR DISTANCE FOR ANGLE SECTOR
-    # ========================================================
-
-    def get_sector_distance(self, center_angle_deg, half_width_deg):
-
-        if self.scan_msg is None:
-            return None
-
-        msg = self.scan_msg
-
-        center = math.radians(center_angle_deg)
-        half = math.radians(half_width_deg)
-
-        start_angle = center - half
-        end_angle = center + half
-
-        values = []
-
-        angle = msg.angle_min
-
-        for distance in msg.ranges:
-
-            if angle >= start_angle and angle <= end_angle:
-
-                if self.valid_range(distance):
-
-                    if distance >= msg.range_min and distance <= msg.range_max:
-
-                        values.append(float(distance))
-
-            angle += msg.angle_increment
-
-        if len(values) == 0:
-            return None
-
-        # Minimum distance is safest for obstacle detection
-        return min(values)
-
-    # ========================================================
-    # STAGE 3
-    # GET FRONT / LEFT / RIGHT DISTANCES
-    # ========================================================
-
-    def get_lidar_state(self):
-
-        front = self.get_sector_distance(
-            0.0,
-            FRONT_HALF_ANGLE
+        return (
+            self.front_min <=
+            FRONT_STOP_DIST
         )
 
-        left = self.get_sector_distance(
-            90.0,
-            SIDE_HALF_ANGLE
+    # ========================================================
+    # STAGE 9 - AUTONOMOUS OBSTACLE AVOIDANCE
+    # ========================================================
+
+    def autonomous_step(self):
+
+        if self.paused:
+
+            self.stop()
+
+            return
+
+        if not self.scan_ready:
+
+            rospy.logwarn_throttle(
+                2.0,
+                "[AUTONOMOUS] Waiting for LiDAR..."
+            )
+
+            self.stop()
+
+            return
+
+        now = rospy.get_time()
+
+        # ====================================================
+        # FORWARD
+        # ====================================================
+
+        if self.state == "FORWARD":
+
+            # ------------------------------------------------
+            # Obstacle detected
+            # ------------------------------------------------
+
+            if self.front_blocked():
+
+                rospy.logwarn(
+                    "[AUTONOMOUS] OBSTACLE "
+                    "Front=%.2f Left=%.2f Right=%.2f",
+                    self.front_min,
+                    self.left_min,
+                    self.right_min
+                )
+
+                # --------------------------------------------
+                # Boxed in
+                # --------------------------------------------
+
+                boxed_in = (
+
+                    self.front_min <= BOXED_IN_DIST and
+                    self.left_min <= BOXED_IN_DIST and
+                    self.right_min <= BOXED_IN_DIST
+
+                )
+
+                self.stop()
+
+                if boxed_in:
+
+                    rospy.logwarn(
+                        "[AUTONOMOUS] BOXED IN -> REVERSE"
+                    )
+
+                    self.state = "REVERSE"
+
+                    self.state_until = (
+                        now +
+                        REVERSE_TIME
+                    )
+
+                else:
+
+                    self.turn_direction = (
+                        self.choose_turn_direction()
+                    )
+
+                    self.state = "AVOID_TURN"
+
+                    self.state_until = (
+                        now +
+                        TURN_TIME
+                    )
+
+                    if self.turn_direction > 0:
+
+                        direction = "LEFT"
+
+                    else:
+
+                        direction = "RIGHT"
+
+                    rospy.logwarn(
+                        "[AUTONOMOUS] "
+                        "TURN %s",
+                        direction
+                    )
+
+            else:
+
+                # --------------------------------------------
+                # Clear path
+                # --------------------------------------------
+
+                self.publish_twist(
+                    AUTONOMOUS_FORWARD_SPEED,
+                    0.0
+                )
+
+        # ====================================================
+        # AVOID TURN
+        # ====================================================
+
+        elif self.state == "AVOID_TURN":
+
+            self.publish_twist(
+                0.0,
+                self.turn_direction *
+                TURN_SPEED
+            )
+
+            # ------------------------------------------------
+            # Stop turning when enough time has passed
+            # OR front becomes clear
+            # ------------------------------------------------
+
+            if (
+
+                now >= self.state_until
+
+                or
+
+                (
+                    not math.isinf(self.front_min)
+                    and
+                    self.front_min >
+                    FRONT_STOP_DIST * 1.3
+                )
+
+            ):
+
+                self.stop()
+
+                self.state = "FORWARD"
+
+                rospy.loginfo(
+                    "[AUTONOMOUS] "
+                    "Path cleared -> FORWARD"
+                )
+
+        # ====================================================
+        # REVERSE
+        # ====================================================
+
+        elif self.state == "REVERSE":
+
+            self.publish_twist(
+                -AUTONOMOUS_FORWARD_SPEED,
+                0.0
+            )
+
+            if now >= self.state_until:
+
+                self.stop()
+
+                self.turn_direction = (
+                    self.choose_turn_direction()
+                )
+
+                self.state = "AVOID_TURN"
+
+                self.state_until = (
+                    now +
+                    TURN_TIME
+                )
+
+                if self.turn_direction > 0:
+
+                    direction = "LEFT"
+
+                else:
+
+                    direction = "RIGHT"
+
+                rospy.loginfo(
+                    "[AUTONOMOUS] "
+                    "Reverse complete -> TURN %s",
+                    direction
+                )
+
+    # ========================================================
+    # STAGE 9 - AUTONOMOUS LOOP
+    # ========================================================
+
+    def run_autonomous(self):
+
+        rospy.loginfo(
+            "=========================================="
         )
 
-        right = self.get_sector_distance(
-            -90.0,
-            SIDE_HALF_ANGLE
+        rospy.loginfo(
+            "AUTONOMOUS OBSTACLE AVOIDANCE STARTED"
         )
+
+        rospy.loginfo(
+            "LiDAR safety controller is active."
+        )
+
+        rospy.loginfo(
+            "=========================================="
+        )
+
+        self.state = "FORWARD"
+
+        while not rospy.is_shutdown():
+
+            self.autonomous_step()
+
+            self.rate.sleep()
+
+        self.stop()
+
+
+# ============================================================
+# STAGE 5 - JSON EXTRACTION
+# ============================================================
+
+def extract_json_objects(text):
+
+    objects = []
+
+    if not text:
+        return objects
+
+    # --------------------------------------------------------
+    # Remove markdown fences
+    # --------------------------------------------------------
+
+    text = text.replace(
+        "```json",
+        ""
+    )
+
+    text = text.replace(
+        "```",
+        ""
+    )
+
+    # --------------------------------------------------------
+    # Find balanced JSON objects
+    # --------------------------------------------------------
+
+    start = -1
+
+    depth = 0
+
+    in_string = False
+
+    escaped = False
+
+    for i in range(len(text)):
+
+        char = text[i]
+
+        if in_string:
+
+            if escaped:
+
+                escaped = False
+
+            elif char == "\\":
+
+                escaped = True
+
+            elif char == '"':
+
+                in_string = False
+
+            continue
+
+        if char == '"':
+
+            in_string = True
+
+        elif char == "{":
+
+            if depth == 0:
+
+                start = i
+
+            depth += 1
+
+        elif char == "}":
+
+            if depth > 0:
+
+                depth -= 1
+
+            if depth == 0 and start >= 0:
+
+                candidate = text[
+                    start:i + 1
+                ]
+
+                try:
+
+                    obj = json.loads(
+                        candidate
+                    )
+
+                    objects.append(obj)
+
+                except Exception:
+
+                    pass
+
+                start = -1
+
+    return objects
+
+
+# ============================================================
+# STAGE 5 - NORMALIZE COMMAND
+# ============================================================
+
+def normalize_command(command):
+
+    if not isinstance(
+            command,
+            dict
+    ):
+
+        return None
+
+    action = command.get(
+        "action"
+    )
+
+    if not action:
+
+        return None
+
+    action = str(
+        action
+    ).lower().strip()
+
+    # --------------------------------------------------------
+    # STOP
+    # --------------------------------------------------------
+
+    if action == "stop":
 
         return {
-            "front": front,
-            "left": left,
-            "right": right
+            "action": "stop"
         }
 
-    # ========================================================
-    # STAGE 7
-    # HUMAN-READABLE ROBOT STATUS
-    # ========================================================
+    # --------------------------------------------------------
+    # AUTONOMOUS
+    # --------------------------------------------------------
 
-    def format_distance(self, value):
+    if action in [
+        "autonomous",
+        "avoid",
+        "explore",
+        "autonomous_avoid",
+        "obstacle_avoidance"
+    ]:
 
-        if value is None:
-            return "no valid return"
-
-        return "%.2f m" % value
-
-    def get_robot_status(self):
-
-        lidar = self.get_lidar_state()
-
-        status = {
-            "movement": self.current_command,
-            "moving": self.is_moving,
-            "lidar_front": lidar["front"],
-            "lidar_left": lidar["left"],
-            "lidar_right": lidar["right"]
+        return {
+            "action": "autonomous_avoid"
         }
 
-        return status
+    # --------------------------------------------------------
+    # STATUS
+    # --------------------------------------------------------
 
-    def print_robot_status(self):
+    if action in [
+        "status",
+        "robot_status",
+        "sensor_status"
+    ]:
 
-        status = self.get_robot_status()
+        return {
+            "action": "status"
+        }
+
+    # --------------------------------------------------------
+    # MOVE
+    # --------------------------------------------------------
+
+    if action == "move":
+
+        direction = str(
+            command.get(
+                "direction",
+                "forward"
+            )
+        ).lower().strip()
+
+        try:
+
+            duration = float(
+                command.get(
+                    "duration",
+                    1
+                )
+            )
+
+        except Exception:
+
+            duration = 1.0
+
+        if direction not in [
+            "forward",
+            "backward"
+        ]:
+
+            return None
+
+        if duration < 0.1:
+
+            duration = 0.1
+
+        if duration > 30:
+
+            duration = 30
+
+        return {
+            "action": "move",
+            "direction": direction,
+            "duration": duration
+        }
+
+    # --------------------------------------------------------
+    # TURN
+    # --------------------------------------------------------
+
+    if action == "turn":
+
+        direction = str(
+            command.get(
+                "direction",
+                "left"
+            )
+        ).lower().strip()
+
+        try:
+
+            duration = float(
+                command.get(
+                    "duration",
+                    1
+                )
+            )
+
+        except Exception:
+
+            duration = 1.0
+
+        if direction not in [
+            "left",
+            "right"
+        ]:
+
+            return None
+
+        if duration < 0.1:
+
+            duration = 0.1
+
+        if duration > 20:
+
+            duration = 20
+
+        return {
+            "action": "turn",
+            "direction": direction,
+            "duration": duration
+        }
+
+    return None
+
+
+# ============================================================
+# STAGE 5 - NATURAL LANGUAGE FALLBACK
+# ============================================================
+
+def natural_language_fallback(text):
+
+    if not text:
+
+        return None
+
+    lower = text.lower()
+
+    # --------------------------------------------------------
+    # STOP
+    # --------------------------------------------------------
+
+    if re.search(
+            r"\bstop\b",
+            lower
+    ):
+
+        return {
+            "action": "stop"
+        }
+
+    # --------------------------------------------------------
+    # AUTONOMOUS OBSTACLE AVOIDANCE
+    # --------------------------------------------------------
+
+    autonomous_words = [
+
+        "avoid obstacle",
+        "avoid obstacles",
+        "obstacle avoidance",
+        "until you see an obstacle",
+        "until there is an obstacle",
+        "until you encounter an obstacle",
+        "keep moving and avoid",
+        "go around obstacles",
+        "avoid anything in front",
+        "don't hit anything",
+        "do not hit anything",
+        "without hitting",
+        "explore while avoiding"
+
+    ]
+
+    for phrase in autonomous_words:
+
+        if phrase in lower:
+
+            return {
+                "action": "autonomous_avoid"
+            }
+
+    # --------------------------------------------------------
+    # STATUS
+    # --------------------------------------------------------
+
+    if (
+        "what is in front" in lower
+        or
+        "what's in front" in lower
+        or
+        "robot status" in lower
+        or
+        "sensor status" in lower
+        or
+        "lidar status" in lower
+        or
+        "is it safe" in lower
+    ):
+
+        return {
+            "action": "status"
+        }
+
+    # --------------------------------------------------------
+    # MOVE
+    # --------------------------------------------------------
+
+    move_match = re.search(
+        r"(forward|backward).*?(\d+(?:\.\d+)?)\s*second",
+        lower
+    )
+
+    if move_match:
+
+        return {
+            "action": "move",
+            "direction": move_match.group(1),
+            "duration": float(
+                move_match.group(2)
+            )
+        }
+
+    # --------------------------------------------------------
+    # TURN
+    # --------------------------------------------------------
+
+    turn_match = re.search(
+        r"(left|right).*?(\d+(?:\.\d+)?)\s*second",
+        lower
+    )
+
+    if turn_match:
+
+        return {
+            "action": "turn",
+            "direction": turn_match.group(1),
+            "duration": float(
+                turn_match.group(2)
+            )
+        }
+
+    return None
+
+
+# ============================================================
+# STAGE 6 - LLM ROBOT NODE
+# ============================================================
+
+class LLMRobotNode(object):
+
+    def __init__(self):
+
+        rospy.init_node(
+            "llm_robot_node"
+        )
+
+        # ----------------------------------------------------
+        # Configuration
+        # ----------------------------------------------------
+
+        self.dry_run = DRY_RUN
+
+        # ----------------------------------------------------
+        # LLM session
+        # ----------------------------------------------------
+
+        self.session = requests.Session()
+
+        # ----------------------------------------------------
+        # Safety controller
+        # ----------------------------------------------------
+
+        self.safety = LidarSafetyController(
+            self
+        )
+
+        # ----------------------------------------------------
+        # State
+        # ----------------------------------------------------
+
+        self.current_movement = "stopped"
+
+        self.running_autonomous = False
 
         rospy.loginfo(
-            "ROBOT STATUS | Movement: %s | Moving: %s",
-            status["movement"],
-            status["moving"]
+            "LLM Robot Node started"
         )
 
         rospy.loginfo(
-            "LiDAR | Front: %s | Left: %s | Right: %s",
-            self.format_distance(status["lidar_front"]),
-            self.format_distance(status["lidar_left"]),
-            self.format_distance(status["lidar_right"])
+            "DRY_RUN = %s",
+            self.dry_run
+        )
+
+        if not self.dry_run:
+
+            rospy.loginfo(
+                "REAL ROBOT CONTROL ENABLED"
+            )
+
+        else:
+
+            rospy.logwarn(
+                "DRY RUN ENABLED"
+            )
+
+        rospy.on_shutdown(
+            self.shutdown
         )
 
     # ========================================================
-    # STAGE 1
-    # SEND PROMPT TO LLAMA.CPP
+    # STAGE 6 - LLM PROMPT
+    # ========================================================
+
+    def build_prompt(self, user_command):
+
+        prompt = """
+You are the intelligence of a mobile robot called JetAuto.
+
+Convert the user's command into robot actions.
+
+OUTPUT ONLY VALID JSON.
+
+Do not explain anything.
+
+For ONE action use:
+
+{"action":"move","direction":"forward","duration":2}
+
+or:
+
+{"action":"move","direction":"backward","duration":2}
+
+or:
+
+{"action":"turn","direction":"left","duration":2}
+
+or:
+
+{"action":"turn","direction":"right","duration":2}
+
+or:
+
+{"action":"stop"}
+
+or:
+
+{"action":"status"}
+
+For obstacle avoidance / autonomous movement use:
+
+{"action":"autonomous_avoid"}
+
+Use autonomous_avoid when the user asks the robot to:
+- move until it sees an obstacle
+- avoid obstacles
+- go around obstacles
+- keep moving while avoiding obstacles
+- explore while avoiding obstacles
+- move without hitting anything
+
+The autonomous obstacle avoidance controller uses LiDAR.
+Do NOT output multiple JSON objects for one command.
+
+USER COMMAND:
+%s
+""" % user_command
+
+        return prompt
+
+    # ========================================================
+    # STAGE 6 - CALL LOCAL QWEN
     # ========================================================
 
     def ask_llm(self, user_command):
 
-        system_prompt = """
-You are the intelligence interface of a mobile robot.
-
-The robot has:
-- forward movement
-- backward movement
-- left turning
-- right turning
-- stop
-- LiDAR sensor
-
-You convert natural language into robot commands.
-
-IMPORTANT:
-Return ONLY valid JSON.
-
-For ONE command use:
-
-{"action":"move","direction":"forward","duration":2}
-
-For MULTIPLE commands use a JSON ARRAY:
-
-[
- {"action":"move","direction":"forward","duration":2},
- {"action":"turn","direction":"left","duration":1}
-]
-
-Allowed actions:
-move
-turn
-stop
-
-Allowed directions:
-forward
-backward
-left
-right
-
-Rules:
-- move requires direction and duration
-- turn requires direction and duration
-- stop requires only action
-- duration must be a number
-- maximum duration is 10 seconds
-- NEVER return explanations
-- NEVER use markdown
-- NEVER return ```json
-- NEVER invent other actions
-"""
-
-        prompt = (
-            system_prompt +
-            "\n\nUser command: " +
-            user_command +
-            "\n\nJSON:"
+        prompt = self.build_prompt(
+            user_command
         )
 
         payload = {
+
             "prompt": prompt,
-            "n_predict": 80,
+
+            "n_predict": 60,
+
             "temperature": 0,
+
             "top_k": 20,
-            "top_p": 0.90
+
+            "top_p": 0.8,
+
+            "stream": False
+
         }
 
         try:
 
-            response = requests.post(
+            response = self.session.post(
                 LLM_URL,
-                headers={
-                    "Content-Type": "application/json"
-                },
-                data=json.dumps(payload),
+                json=payload,
                 timeout=LLM_TIMEOUT
             )
 
-            if response.status_code != 200:
-
-                rospy.logerr(
-                    "LLM HTTP error: %s",
-                    response.status_code
-                )
-
-                return None
+            response.raise_for_status()
 
             data = response.json()
 
-            content = data.get("content", "")
-
-            if content is None:
-                return None
-
-            content = content.strip()
+            content = data.get(
+                "content",
+                ""
+            )
 
             rospy.loginfo(
                 "LLM response: %s",
@@ -383,318 +1250,154 @@ Rules:
             return None
 
     # ========================================================
-    # STAGE 5
-    # EXTRACT JSON FROM LLM RESPONSE
-    #
-    # Handles:
-    #   {...}
-    #   [...]
-    #
-    # Also handles accidental text before/after JSON.
+    # STAGE 5 - PARSE LLM RESPONSE
     # ========================================================
 
-    def extract_json(self, text):
+    def parse_response(self, response):
 
-        if not text:
+        if not response:
+
             return None
 
-        text = text.strip()
-
-        # Remove markdown fences if model produces them
-        text = text.replace("```json", "")
-        text = text.replace("```", "")
-        text = text.strip()
-
         # ----------------------------------------------------
-        # First try entire response
+        # First try JSON extraction
         # ----------------------------------------------------
 
-        try:
-
-            return json.loads(text)
-
-        except Exception:
-            pass
-
-        # ----------------------------------------------------
-        # Try JSON ARRAY
-        # ----------------------------------------------------
-
-        start = text.find("[")
-        end = text.rfind("]")
-
-        if start != -1 and end != -1 and end > start:
-
-            candidate = text[start:end + 1]
-
-            try:
-
-                return json.loads(candidate)
-
-            except Exception:
-                pass
-
-        # ----------------------------------------------------
-        # Try JSON OBJECT
-        # ----------------------------------------------------
-
-        start = text.find("{")
-        end = text.rfind("}")
-
-        if start != -1 and end != -1 and end > start:
-
-            candidate = text[start:end + 1]
-
-            try:
-
-                return json.loads(candidate)
-
-            except Exception:
-                pass
-
-        rospy.logerr(
-            "JSON parsing failed. No valid JSON found."
+        objects = extract_json_objects(
+            response
         )
 
-        return None
+        if objects:
+
+            # Prefer the first valid normalized command
+
+            for obj in objects:
+
+                command = normalize_command(
+                    obj
+                )
+
+                if command:
+
+                    return command
+
+        # ----------------------------------------------------
+        # Natural language fallback
+        # ----------------------------------------------------
+
+        rospy.logwarn(
+            "JSON parsing failed. "
+            "Trying natural-language fallback."
+        )
+
+        return natural_language_fallback(
+            response
+        )
 
     # ========================================================
-    # STAGE 5
-    # NORMALIZE SINGLE COMMAND / COMMAND ARRAY
+    # STAGE 7 - ROBOT STATUS
     # ========================================================
 
-    def normalize_commands(self, parsed):
+    def print_status(self):
 
-        if parsed is None:
-            return []
+        front = self.safety.front_min
 
-        # Single command
-        if isinstance(parsed, dict):
+        left = self.safety.left_min
 
-            return [parsed]
+        right = self.safety.right_min
 
-        # Multiple commands
-        if isinstance(parsed, list):
+        rospy.loginfo(
+            ""
+        )
 
-            commands = []
+        rospy.loginfo(
+            "========== ROBOT STATUS =========="
+        )
 
-            for item in parsed:
+        rospy.loginfo(
+            "Movement : %s",
+            self.current_movement
+        )
 
-                if isinstance(item, dict):
+        rospy.loginfo(
+            "Moving   : %s",
+            self.current_movement != "stopped"
+        )
 
-                    commands.append(item)
+        if math.isinf(front):
 
-            return commands
-
-        return []
-
-    # ========================================================
-    # STAGE 2
-    # VALIDATE COMMAND
-    # ========================================================
-
-    def validate_command(self, command):
-
-        if not isinstance(command, dict):
-
-            return False
-
-        action = command.get("action")
-
-        if action not in [
-            "move",
-            "turn",
-            "stop"
-        ]:
-
-            rospy.logwarn(
-                "Invalid action: %s",
-                str(action)
-            )
-
-            return False
-
-        # Stop needs no direction
-        if action == "stop":
-
-            return True
-
-        direction = command.get("direction")
-
-        if direction not in [
-            "forward",
-            "backward",
-            "left",
-            "right"
-        ]:
-
-            rospy.logwarn(
-                "Invalid direction: %s",
-                str(direction)
-            )
-
-            return False
-
-        duration = command.get("duration")
-
-        try:
-
-            duration = float(duration)
-
-        except Exception:
-
-            rospy.logwarn(
-                "Invalid duration."
-            )
-
-            return False
-
-        if duration <= 0:
-
-            rospy.logwarn(
-                "Duration must be positive."
-            )
-
-            return False
-
-        if duration > MAX_DURATION:
-
-            rospy.logwarn(
-                "Duration %.2f exceeds maximum. Limiting to %.2f.",
-                duration,
-                MAX_DURATION
-            )
-
-            command["duration"] = MAX_DURATION
+            front_text = "no valid return"
 
         else:
 
-            command["duration"] = duration
+            front_text = "%.2f m" % front
 
-        return True
-    # ========================================================
-    # STAGE 6
-    # LiDAR SAFETY CHECK
-    #
-    # This is deliberately OUTSIDE the LLM.
-    # The LLM cannot override this.
-    # ========================================================
+        if math.isinf(left):
 
-    def obstacle_ahead(self):
+            left_text = "no valid return"
 
-        lidar = self.get_lidar_state()
+        else:
 
-        front = lidar["front"]
+            left_text = "%.2f m" % left
 
-        if front is None:
+        if math.isinf(right):
 
-            # No valid front return.
-            # We don't automatically declare it unsafe.
-            # But we log it clearly.
-            rospy.logwarn(
-                "LiDAR front: no valid return."
-            )
+            right_text = "no valid return"
 
-            return False
+        else:
 
-        if front < SAFETY_DISTANCE:
-
-            rospy.logwarn(
-                "SAFETY: obstacle detected at %.2f m",
-                front
-            )
-
-            return True
-
-        return False
-
-    # ========================================================
-    # STAGE 6
-    # SAFETY-AWARE VELOCITY PUBLISH
-    # ========================================================
-
-    def publish_velocity(self, linear_x, angular_z):
-
-        # ----------------------------------------------------
-        # Forward safety
-        # ----------------------------------------------------
-
-        if linear_x > 0:
-
-            if self.obstacle_ahead():
-
-                rospy.logwarn(
-                    "Forward movement BLOCKED by LiDAR."
-                )
-
-                self.stop_robot()
-
-                return False
-
-        # ----------------------------------------------------
-        # REAL ROBOT
-        # ----------------------------------------------------
-
-        twist = Twist()
-
-        twist.linear.x = linear_x
-        twist.linear.y = 0.0
-        twist.linear.z = 0.0
-
-        twist.angular.x = 0.0
-        twist.angular.y = 0.0
-        twist.angular.z = angular_z
-
-        if DRY_RUN:
-
-            rospy.loginfo(
-                "[DRY RUN] velocity linear=%.2f angular=%.2f",
-                linear_x,
-                angular_z
-            )
-
-            return True
-
-        self.cmd_pub.publish(twist)
-
-        return True
-
-    # ========================================================
-    # STAGE 4
-    # STOP ROBOT
-    # ========================================================
-
-    def stop_robot(self):
-
-        twist = Twist()
-
-        twist.linear.x = 0.0
-        twist.linear.y = 0.0
-        twist.linear.z = 0.0
-
-        twist.angular.x = 0.0
-        twist.angular.y = 0.0
-        twist.angular.z = 0.0
-
-        if not DRY_RUN:
-
-            self.cmd_pub.publish(twist)
-
-        self.is_moving = False
-        self.current_command = "stopped"
+            right_text = "%.2f m" % right
 
         rospy.loginfo(
-            "Robot STOPPED"
+            "Front    : %s",
+            front_text
+        )
+
+        rospy.loginfo(
+            "Left     : %s",
+            left_text
+        )
+
+        rospy.loginfo(
+            "Right    : %s",
+            right_text
+        )
+
+        rospy.loginfo(
+            "================================="
         )
 
     # ========================================================
-    # STAGE 4
-    # EXECUTE MOVEMENT
+    # STAGE 7 - SAFETY STATUS
     # ========================================================
 
-    def execute_movement(self, direction, duration):
+    def is_front_safe(self):
 
-        duration = float(duration)
+        if not self.safety.scan_ready:
+
+            return False
+
+        if math.isinf(
+                self.safety.front_min
+        ):
+
+            return not STOP_IF_FRONT_INVALID
+
+        return (
+            self.safety.front_min >
+            FRONT_STOP_DIST
+        )
+
+    # ========================================================
+    # STAGE 3 + STAGE 9
+    # NORMAL MOVEMENT
+    # ========================================================
+
+    def execute_move(
+            self,
+            direction,
+            duration
+    ):
 
         rospy.loginfo(
             "Command: move %s for %.2f seconds",
@@ -702,105 +1405,121 @@ Rules:
             duration
         )
 
+        # ----------------------------------------------------
+        # Safety check before forward movement
+        # ----------------------------------------------------
+
         if direction == "forward":
 
-            linear = LINEAR_SPEED
-            angular = 0.0
+            if not self.is_front_safe():
 
-        elif direction == "backward":
+                rospy.logwarn(
+                    "[SAFETY] Forward movement blocked."
+                )
 
-            linear = -LINEAR_SPEED
-            angular = 0.0
+                self.stop_robot()
 
-        elif direction == "left":
+                return
 
-            linear = 0.0
-            angular = ANGULAR_SPEED
+        # ----------------------------------------------------
+        # Select velocity
+        # ----------------------------------------------------
 
-        elif direction == "right":
+        if direction == "forward":
 
-            linear = 0.0
-            angular = -ANGULAR_SPEED
+            velocity = LINEAR_SPEED
 
         else:
 
-            rospy.logerr(
-                "Unknown movement direction."
-            )
+            velocity = -LINEAR_SPEED
 
-            return
+        # ----------------------------------------------------
+        # Dry run
+        # ----------------------------------------------------
 
-        if DRY_RUN:
+        if self.dry_run:
 
             rospy.loginfo(
-                "[DRY RUN] Would execute: %s %.2f sec",
+                "[DRY RUN] Would execute: "
+                "move %s for %.2f seconds",
                 direction,
                 duration
             )
 
-            time.sleep(duration)
+            self.current_movement = direction
+
+            time.sleep(
+                duration
+            )
+
+            self.current_movement = "stopped"
 
             return
+
+        # ----------------------------------------------------
+        # REAL ROBOT
+        # ----------------------------------------------------
 
         rospy.loginfo(
             "Executing REAL robot movement."
         )
 
-        self.is_moving = True
-        self.current_command = direction
+        start = rospy.get_time()
 
-        start_time = time.time()
+        self.current_movement = direction
 
-        rate = rospy.Rate(10)
+        rate = rospy.Rate(
+            CONTROL_RATE_HZ
+        )
 
         while not rospy.is_shutdown():
 
-            elapsed = time.time() - start_time
+            elapsed = (
+                rospy.get_time() -
+                start
+            )
 
             if elapsed >= duration:
 
                 break
 
             # ----------------------------------------------
-            # STAGE 6
-            # CONTINUOUS LiDAR SAFETY
+            # Forward safety override
             # ----------------------------------------------
 
-            if linear > 0:
+            if direction == "forward":
 
-                if self.obstacle_ahead():
+                if self.safety.front_blocked():
 
                     rospy.logwarn(
-                        "Emergency stop: obstacle ahead."
+                        "[SAFETY] Obstacle detected "
+                        "during forward movement."
                     )
 
-                    break
+                    self.stop_robot()
 
-            # ----------------------------------------------
-            # Publish velocity
-            # ----------------------------------------------
+                    self.current_movement = "stopped"
 
-            success = self.publish_velocity(
-                linear,
-                angular
+                    return
+
+            self.safety.publish_twist(
+                velocity,
+                0.0
             )
-
-            if not success:
-
-                break
 
             rate.sleep()
 
         self.stop_robot()
 
     # ========================================================
-    # STAGE 4
-    # EXECUTE TURN
+    # STAGE 3 - TURN
     # ========================================================
 
-    def execute_turn(self, direction, duration):
-
-        duration = float(duration)
+    def execute_turn(
+            self,
+            direction,
+            duration
+    ):
 
         rospy.loginfo(
             "Command: turn %s for %.2f seconds",
@@ -810,29 +1529,30 @@ Rules:
 
         if direction == "left":
 
-            angular = ANGULAR_SPEED
-
-        elif direction == "right":
-
-            angular = -ANGULAR_SPEED
+            angular = TURN_SPEED
 
         else:
 
-            rospy.logerr(
-                "Unknown turn direction."
-            )
+            angular = -TURN_SPEED
 
-            return
-
-        if DRY_RUN:
+        if self.dry_run:
 
             rospy.loginfo(
-                "[DRY RUN] Would execute: turn %s for %.2f seconds",
+                "[DRY RUN] Would execute: "
+                "turn %s for %.2f seconds",
                 direction,
                 duration
             )
 
-            time.sleep(duration)
+            self.current_movement = (
+                "turn_" + direction
+            )
+
+            time.sleep(
+                duration
+            )
+
+            self.current_movement = "stopped"
 
             return
 
@@ -840,22 +1560,28 @@ Rules:
             "Executing REAL robot turn."
         )
 
-        self.is_moving = True
-        self.current_command = "turning_" + direction
+        start = rospy.get_time()
 
-        start_time = time.time()
+        self.current_movement = (
+            "turn_" + direction
+        )
 
-        rate = rospy.Rate(10)
+        rate = rospy.Rate(
+            CONTROL_RATE_HZ
+        )
 
         while not rospy.is_shutdown():
 
-            elapsed = time.time() - start_time
+            elapsed = (
+                rospy.get_time() -
+                start
+            )
 
             if elapsed >= duration:
 
                 break
 
-            self.publish_velocity(
+            self.safety.publish_twist(
                 0.0,
                 angular
             )
@@ -865,23 +1591,117 @@ Rules:
         self.stop_robot()
 
     # ========================================================
-    # STAGE 4 + 5
-    # EXECUTE ONE COMMAND
+    # STAGE 3 - STOP
     # ========================================================
 
-    def execute_command(self, command):
+    def stop_robot(self):
 
-        if not self.validate_command(command):
+        self.safety.stop()
 
-            rospy.logwarn(
-                "Command rejected."
+        self.current_movement = "stopped"
+
+        rospy.loginfo(
+            "Robot STOPPED"
+        )
+
+    # ========================================================
+    # STAGE 9 - AUTONOMOUS MODE
+    # ========================================================
+
+    def execute_autonomous(self):
+
+        rospy.loginfo(
+            ""
+        )
+
+        rospy.loginfo(
+            "=========================================="
+        )
+
+        rospy.loginfo(
+            "STARTING AUTONOMOUS OBSTACLE AVOIDANCE"
+        )
+
+        rospy.loginfo(
+            "Robot will move forward continuously."
+        )
+
+        rospy.loginfo(
+            "LiDAR will detect obstacles."
+        )
+
+        rospy.loginfo(
+            "Robot will stop, turn or reverse."
+        )
+
+        rospy.loginfo(
+            "=========================================="
+        )
+
+        self.running_autonomous = True
+
+        self.current_movement = (
+            "autonomous_avoidance"
+        )
+
+        # ----------------------------------------------------
+        # This loop is intentionally blocking.
+        #
+        # The user can stop it with:
+        #
+        # Ctrl+C
+        #
+        # or another ROS command publishing zero velocity.
+        # ----------------------------------------------------
+
+        try:
+
+            self.safety.run_autonomous()
+
+        except Exception as e:
+
+            rospy.logerr(
+                "Autonomous controller error: %s",
+                str(e)
             )
 
             self.stop_robot()
 
-            return False
+        self.running_autonomous = False
 
-        action = command.get("action")
+        self.current_movement = "stopped"
+
+    # ========================================================
+    # STAGE 4 + STAGE 8
+    # EXECUTE COMMAND
+    # ========================================================
+
+    def execute_command(self, command):
+
+        if not command:
+
+            rospy.logerr(
+                "No valid command."
+            )
+
+            self.stop_robot()
+
+            return
+
+        rospy.loginfo(
+            "Parsed command: %s",
+            json.dumps(
+                command
+            )
+        )
+
+        action = command.get(
+            "action"
+        )
+
+        # ----------------------------------------------------
+        # STOP
+        # ----------------------------------------------------
 
         if action == "stop":
 
@@ -891,85 +1711,149 @@ Rules:
 
             self.stop_robot()
 
-            return True
+            return
 
-        direction = command.get("direction")
-        duration = float(command.get("duration"))
+        # ----------------------------------------------------
+        # STATUS
+        # ----------------------------------------------------
+
+        if action == "status":
+
+            self.print_status()
+
+            return
+
+        # ----------------------------------------------------
+        # AUTONOMOUS
+        # ----------------------------------------------------
+
+        if action == "autonomous_avoid":
+
+            self.execute_autonomous()
+
+            return
+
+        # ----------------------------------------------------
+        # MOVE
+        # ----------------------------------------------------
 
         if action == "move":
 
-            self.execute_movement(
-                direction,
-                duration
+            self.execute_move(
+
+                command.get(
+                    "direction",
+                    "forward"
+                ),
+
+                float(
+                    command.get(
+                        "duration",
+                        1
+                    )
+                )
+
             )
 
-            return True
+            return
+
+        # ----------------------------------------------------
+        # TURN
+        # ----------------------------------------------------
 
         if action == "turn":
 
             self.execute_turn(
-                direction,
-                duration
+
+                command.get(
+                    "direction",
+                    "left"
+                ),
+
+                float(
+                    command.get(
+                        "duration",
+                        1
+                    )
+                )
+
             )
-
-            return True
-
-        return False
-
-    # ========================================================
-    # STAGE 5
-    # EXECUTE MULTIPLE COMMANDS
-    # ========================================================
-
-    def execute_sequence(self, commands):
-
-        if len(commands) == 0:
-
-            rospy.logerr(
-                "No executable commands."
-            )
-
-            self.stop_robot()
 
             return
 
-        rospy.loginfo(
-            "Executing command sequence: %d commands",
-            len(commands)
+        # ----------------------------------------------------
+        # Unknown
+        # ----------------------------------------------------
+
+        rospy.logwarn(
+            "Unknown action: %s",
+            action
         )
 
-        for index, command in enumerate(commands):
+        self.stop_robot()
+
+    # ========================================================
+    # STAGE 4 + STAGE 8
+    # MULTI-COMMAND EXECUTION
+    # ========================================================
+
+    def execute_multiple_commands(
+            self,
+            commands
+    ):
+
+        if not commands:
+
+            return
+
+        total = len(
+            commands
+        )
+
+        rospy.loginfo(
+            "Executing %d commands.",
+            total
+        )
+
+        for index, command in enumerate(
+                commands
+        ):
 
             if rospy.is_shutdown():
+
                 break
 
             rospy.loginfo(
                 "========== COMMAND %d / %d ==========",
                 index + 1,
-                len(commands)
+                total
             )
 
             rospy.loginfo(
                 "Command: %s",
-                json.dumps(command)
+                json.dumps(
+                    command
+                )
             )
 
-            success = self.execute_command(
+            self.execute_command(
                 command
             )
 
-            if not success:
+            # ------------------------------------------------
+            # Autonomous mode owns its own loop.
+            # If it returns, continue.
+            # ------------------------------------------------
 
-                rospy.logwarn(
-                    "Command failed. Stopping sequence."
-                )
+            if command.get(
+                    "action"
+            ) == "stop":
 
                 break
 
-            # Always stop between commands
-            self.stop_robot()
-
-            rospy.sleep(0.15)
+            rospy.sleep(
+                0.1
+            )
 
         self.stop_robot()
 
@@ -978,369 +1862,280 @@ Rules:
         )
 
     # ========================================================
-    # STAGE 7
-    # ANSWER ROBOT STATUS QUESTIONS
+    # STAGE 5
+    # PARSE MULTIPLE JSON OBJECTS
     # ========================================================
 
-    def handle_status_question(self, text):
+    def parse_multiple_commands(
+            self,
+            response
+    ):
 
-        text_lower = text.lower()
-
-        status_words = [
-            "status",
-            "what is in front",
-            "what's in front",
-            "distance",
-            "lidar",
-            "safe to move",
-            "safe to go",
-            "obstacle",
-            "how far"
-        ]
-
-        is_status_question = False
-
-        for word in status_words:
-
-            if word in text_lower:
-
-                is_status_question = True
-                break
-
-        if not is_status_question:
-
-            return False
-
-        status = self.get_robot_status()
-
-        front = self.format_distance(
-            status["lidar_front"]
+        objects = extract_json_objects(
+            response
         )
 
-        left = self.format_distance(
-            status["lidar_left"]
-        )
+        commands = []
 
-        right = self.format_distance(
-            status["lidar_right"]
-        )
+        for obj in objects:
 
-        # Safety question
+            command = normalize_command(
+                obj
+            )
+
+            if command:
+
+                commands.append(
+                    command
+                )
+
+        return commands
+
+    # ========================================================
+    # STAGE 7
+    # DIRECT SENSOR QUESTIONS
+    # ========================================================
+
+    def handle_direct_question(
+            self,
+            user_command
+    ):
+
+        lower = user_command.lower()
+
+        # ----------------------------------------------------
+        # FRONT QUESTION
+        # ----------------------------------------------------
+
         if (
-            "safe to move" in text_lower or
-            "safe to go" in text_lower
+            "what is in front" in lower
+            or
+            "what's in front" in lower
         ):
 
-            if status["lidar_front"] is None:
+            self.print_status()
 
-                print(
-                    "I do not have a valid front LiDAR return."
-                )
+            return True
 
-            elif status["lidar_front"] < SAFETY_DISTANCE:
+        # ----------------------------------------------------
+        # SAFE QUESTION
+        # ----------------------------------------------------
 
-                print(
-                    "No. An obstacle is %.2f m ahead." %
-                    status["lidar_front"]
-                )
+        if "safe to move forward" in lower:
+
+            if self.is_front_safe():
+
+                if math.isinf(
+                        self.safety.front_min
+                ):
+
+                    rospy.loginfo(
+                        "No valid front LiDAR return."
+                    )
+
+                else:
+
+                    rospy.loginfo(
+                        "Forward path currently appears "
+                        "safe. Front=%.2f m",
+                        self.safety.front_min
+                    )
 
             else:
 
-                print(
-                    "Yes. Front distance is %.2f m." %
-                    status["lidar_front"]
+                rospy.logwarn(
+                    "Forward movement is NOT safe."
                 )
 
             return True
 
-        print("")
-        print("========== ROBOT STATUS ==========")
-        print("Movement : %s" % status["movement"])
-        print("Moving   : %s" % status["moving"])
-        print("Front    : %s" % front)
-        print("Left     : %s" % left)
-        print("Right    : %s" % right)
-        print("==================================")
-        print("")
-
-        return True
+        return False
 
     # ========================================================
-    # STAGE 8
-    # LOCAL SIMPLE COMMAND FALLBACK
-    #
-    # Useful if the LLM fails.
-    # ========================================================
-
-    def local_command_fallback(self, text):
-
-        t = text.lower()
-
-        # STOP has highest priority
-        if (
-            t.strip() == "stop" or
-            "emergency stop" in t
-        ):
-
-            return [
-                {
-                    "action": "stop"
-                }
-            ]
-
-        # ----------------------------------------------
-        # Duration extraction
-        # ----------------------------------------------
-
-        duration = 1.0
-
-        words = t.replace(",", " ").split()
-
-        for i in range(len(words) - 1):
-
-            try:
-
-                value = float(words[i])
-
-                if (
-                    words[i + 1].startswith("second") or
-                    words[i + 1].startswith("sec")
-                ):
-
-                    duration = value
-
-            except Exception:
-                pass
-
-        # ----------------------------------------------
-        # Direction
-        # ----------------------------------------------
-
-        if "forward" in t:
-
-            return [
-                {
-                    "action": "move",
-                    "direction": "forward",
-                    "duration": duration
-                }
-            ]
-
-        if "backward" in t or "back" in t:
-
-            return [
-                {
-                    "action": "move",
-                    "direction": "backward",
-                    "duration": duration
-                }
-            ]
-
-        if "left" in t:
-
-            return [
-                {
-                    "action": "turn",
-                    "direction": "left",
-                    "duration": duration
-                }
-            ]
-
-        if "right" in t:
-
-            return [
-                {
-                    "action": "turn",
-                    "direction": "right",
-                    "duration": duration
-                }
-            ]
-
-        return []
-
-    # ========================================================
-    # STAGE 8
-    # HANDLE USER INPUT
-    # ========================================================
-
-    def process_user_command(self, text):
-
-        text = text.strip()
-
-        if not text:
-
-            return
-
-        rospy.loginfo(
-            "User command: %s",
-            text
-        )
-
-        # ----------------------------------------------------
-        # STAGE 7
-        # Handle sensor/status questions locally.
-        # This avoids wasting LLM inference time.
-        # ----------------------------------------------------
-
-        if self.handle_status_question(text):
-
-            return
-
-        # ----------------------------------------------------
-        # STAGE 8
-        # Ask LLM
-        # ----------------------------------------------------
-
-        response = self.ask_llm(text)
-
-        parsed = self.extract_json(
-            response
-        )
-
-        # ----------------------------------------------------
-        # STAGE 8
-        # LLM failed -> local fallback
-        # ----------------------------------------------------
-
-        if parsed is None:
-
-            rospy.logwarn(
-                "LLM parsing failed. Trying local fallback."
-            )
-
-            commands = self.local_command_fallback(
-                text
-            )
-
-        else:
-
-            commands = self.normalize_commands(
-                parsed
-            )
-
-        # ----------------------------------------------------
-        # Validate commands
-        # ----------------------------------------------------
-
-        valid_commands = []
-
-        for command in commands:
-
-            if self.validate_command(command):
-
-                valid_commands.append(command)
-
-        if len(valid_commands) == 0:
-
-            rospy.logerr(
-                "Could not understand robot command."
-            )
-
-            self.stop_robot()
-
-            return
-
-        rospy.loginfo(
-            "Parsed commands: %s",
-            json.dumps(valid_commands)
-        )
-
-        # ----------------------------------------------------
-        # STAGE 5
-        # Execute sequence
-        # ----------------------------------------------------
-
-        self.execute_sequence(
-            valid_commands
-        )
-
-    # ========================================================
-    # STAGE 8
-    # MAIN USER LOOP
+    # STAGE 1-9
+    # MAIN RUN LOOP
     # ========================================================
 
     def run(self):
 
         rospy.loginfo(
-            "======================================"
+            ""
         )
 
         rospy.loginfo(
-            "Stages 1-8 loaded."
+            "=========================================="
         )
 
         rospy.loginfo(
-            "Text command interface active."
+            "JetAuto LLM Robot"
         )
 
         rospy.loginfo(
-            "======================================"
+            "Stages 1-9 loaded"
+        )
+
+        rospy.loginfo(
+            "LiDAR safety controller loaded"
+        )
+
+        rospy.loginfo(
+            "=========================================="
         )
 
         while not rospy.is_shutdown():
 
             try:
 
-                print(
-                    "Enter robot command: ",
-                    end=""
+                # ------------------------------------------------
+                # USER INPUT
+                # ------------------------------------------------
+
+                user_command = raw_input(
+                    "Enter robot command: "
                 )
-
-                text = raw_input()
-
-                if text is None:
-                    continue
-
-                text = text.strip()
-
-                if text.lower() in [
-                    "exit",
-                    "quit"
-                ]:
-
-                    rospy.loginfo(
-                        "Exiting robot intelligence."
-                    )
-
-                    break
-
-                self.process_user_command(
-                    text
-                )
-
-            except KeyboardInterrupt:
-
-                rospy.loginfo(
-                    "Keyboard interrupt."
-                )
-
-                break
 
             except EOFError:
 
                 break
 
-            except Exception as e:
+            except KeyboardInterrupt:
 
-                rospy.logerr(
-                    "Main loop error: %s",
-                    str(e)
-                )
+                break
+
+            if not user_command:
+
+                continue
+
+            user_command = user_command.strip()
+
+            rospy.loginfo(
+                "User command: %s",
+                user_command
+            )
+
+            # ------------------------------------------------
+            # Direct sensor question
+            # ------------------------------------------------
+
+            if self.handle_direct_question(
+                    user_command
+            ):
+
+                continue
+
+            # ------------------------------------------------
+            # Ask LLM
+            # ------------------------------------------------
+
+            response = self.ask_llm(
+                user_command
+            )
+
+            if not response:
 
                 self.stop_robot()
 
-        self.stop_robot()
+                continue
+
+            # ------------------------------------------------
+            # Try multiple JSON commands
+            # ------------------------------------------------
+
+            commands = (
+                self.parse_multiple_commands(
+                    response
+                )
+            )
+
+            # ------------------------------------------------
+            # If multiple commands found
+            # ------------------------------------------------
+
+            if len(commands) > 1:
+
+                self.execute_multiple_commands(
+                    commands
+                )
+
+                continue
+
+            # ------------------------------------------------
+            # If one command found
+            # ------------------------------------------------
+
+            if len(commands) == 1:
+
+                self.execute_command(
+                    commands[0]
+                )
+
+                continue
+
+            # ------------------------------------------------
+            # Try normal parser
+            # ------------------------------------------------
+
+            command = self.parse_response(
+                response
+            )
+
+            if command:
+
+                self.execute_command(
+                    command
+                )
+
+                continue
+
+            # ------------------------------------------------
+            # Nothing worked
+            # ------------------------------------------------
+
+            rospy.logerr(
+                "Could not parse LLM response."
+            )
+
+            self.stop_robot()
+
+    # ========================================================
+    # SHUTDOWN
+    # ========================================================
+
+    def shutdown(self):
+
+        rospy.loginfo(
+            "Shutting down LLM Robot Node."
+        )
+
+        try:
+
+            self.safety.stop()
+
+            # Publish several stop messages
+            # to make sure the motor controller receives it.
+
+            for _ in range(6):
+
+                self.safety.stop()
+
+                rospy.sleep(
+                    0.05
+                )
+
+        except Exception:
+
+            pass
 
 
 # ============================================================
-# PROGRAM ENTRY
+# MAIN
 # ============================================================
 
 if __name__ == "__main__":
 
-    node = LLMRobotNode()
-
     try:
+
+        node = LLMRobotNode()
 
         node.run()
 
@@ -1348,10 +2143,8 @@ if __name__ == "__main__":
 
         pass
 
-    finally:
+    except KeyboardInterrupt:
 
-        node.stop_robot()
+        pass
 
 
-  
-      
