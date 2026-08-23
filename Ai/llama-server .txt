@@ -26,3 +26,14 @@ curl http://127.0.0.1:8081/completion \
     "n_predict": 5,
     "temperature": 0
   }'
+
+---
+FOR TESTING ROBOT JSON
+---
+curl http://127.0.0.1:8081/completion \
+  -H "Content-Type: application/json" \
+  -d '{
+    "prompt": "You control a mobile robot. Output ONLY valid JSON. No explanation. User command: Move forward for 2 seconds.",
+    "n_predict": 20,
+    "temperature": 0
+  }'
