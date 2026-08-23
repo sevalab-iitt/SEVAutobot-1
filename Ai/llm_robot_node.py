@@ -1,3 +1,26 @@
+# ============================================================
+# STAGE 1 — LLM COMMAND → JSON
+# ============================================================
+# Implemented:
+# - User enters natural-language command
+# - llama.cpp server processes command
+# - LLM returns structured JSON
+# - JSON is parsed and validated
+#
+# ============================================================
+# STAGE 2 — REAL ROBOT CONTROL
+# ============================================================
+# New:
+# - Publish geometry_msgs/Twist
+# - Execute forward/backward/left/right
+# - Automatically stop after requested duration
+# - STOP command immediately publishes zero velocity
+# - Keep LiDAR monitoring
+# - Keep DRY_RUN safety option
+# ============================================================
+
+---
+
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
@@ -5,6 +28,7 @@ import rospy
 import requests
 import json
 import math
+import time
 
 from geometry_msgs.msg import Twist
 from sensor_msgs.msg import LaserScan
@@ -16,32 +40,23 @@ class LLMRobotNode:
 
         rospy.init_node("llm_robot_node")
 
-        # --------------------------------------------------
-        # PARAMETERS
-        # --------------------------------------------------
-
         self.llm_url = "http://127.0.0.1:8081/completion"
 
-        # Keep DRY_RUN = True for testing.
-        # Change to False only when we are ready to move
-        # the physical robot.
+        # Keep True until physical movement is fully tested.
         self.dry_run = True
 
-        # Robot movement topic
         self.cmd_vel_pub = rospy.Publisher(
             "/jetauto_controller/cmd_vel",
             Twist,
             queue_size=10
         )
 
-        # LiDAR
         self.scan_sub = rospy.Subscriber(
             "/scan",
             LaserScan,
             self.scan_callback
         )
 
-        # Latest LiDAR values
         self.front_distance = float("inf")
         self.left_distance = float("inf")
         self.right_distance = float("inf")
@@ -49,133 +64,141 @@ class LLMRobotNode:
         rospy.loginfo("LLM Robot Node started")
         rospy.loginfo("DRY_RUN = %s", self.dry_run)
 
-    # ======================================================
+    # ==========================================================
     # LIDAR
-    # ======================================================
+    # ==========================================================
+
+    def is_valid_range(self, value, msg):
+
+        if math.isnan(value):
+            return False
+
+        if math.isinf(value):
+            return False
+
+        if value < msg.range_min:
+            return False
+
+        if value > msg.range_max:
+            return False
+
+        return True
+
+    def sector_min(self, msg, start_angle, end_angle):
+
+        values = []
+
+        for i, distance in enumerate(msg.ranges):
+
+            angle = (
+                msg.angle_min +
+                i * msg.angle_increment
+            )
+
+            if start_angle <= angle <= end_angle:
+
+                if self.is_valid_range(
+                    distance,
+                    msg
+                ):
+                    values.append(distance)
+
+        if values:
+            return min(values)
+
+        return float("inf")
 
     def scan_callback(self, msg):
 
-        ranges = msg.ranges
-
-        if not ranges:
+        if not msg.ranges:
             return
 
-        def valid_distance(value):
-
-            # Ignore:
-            #   NaN
-            #   +inf
-            #   -inf
-            #   zero
-            #   values outside LiDAR limits
-
-            if math.isnan(value):
-                return False
-
-            if math.isinf(value):
-                return False
-
-            if value < msg.range_min:
-                return False
-
-            if value > msg.range_max:
-                return False
-
-            return True
-
-        def sector_min(start_angle, end_angle):
-
-            values = []
-
-            for i, distance in enumerate(ranges):
-
-                angle = msg.angle_min + i * msg.angle_increment
-
-                if start_angle <= angle <= end_angle:
-
-                    if valid_distance(distance):
-                        values.append(distance)
-
-            if values:
-                return min(values)
-
-            return float("inf")
-
-        # --------------------------------------------------
-        # LiDAR coordinate convention
-        #
-        #       +90 = left
-        #         0 = front
-        #       -90 = right
-        # --------------------------------------------------
-
-        self.front_distance = sector_min(
+        # Front: -15 to +15 degrees
+        self.front_distance = self.sector_min(
+            msg,
             math.radians(-15),
             math.radians(15)
         )
 
-        self.left_distance = sector_min(
+        # Left: 60 to 120 degrees
+        self.left_distance = self.sector_min(
+            msg,
             math.radians(60),
             math.radians(120)
         )
 
-        self.right_distance = sector_min(
+        # Right: -120 to -60 degrees
+        self.right_distance = self.sector_min(
+            msg,
             math.radians(-120),
             math.radians(-60)
         )
 
-    # ======================================================
+    # ==========================================================
     # LLM
-    # ======================================================
+    # ==========================================================
 
     def ask_llm(self, user_command):
 
-        system_prompt = """
-You control a mobile robot.
+        prompt = """
+You are a robot command parser.
 
-Convert the user's natural-language command into ONLY valid JSON.
+Convert the user command into ONE JSON object.
 
 Allowed actions:
-- move
-- stop
-- turn
+move
+stop
+turn
 
 Allowed directions:
-- forward
-- backward
-- left
-- right
+forward
+backward
+left
+right
 
-JSON format examples:
+Output ONLY the JSON object.
 
-Move forward for 2 seconds:
+Do NOT explain.
+Do NOT add text.
+Do NOT output multiple commands.
+Do NOT output Markdown.
+
+Examples:
+
+User: Move forward for 2 seconds.
+Output:
 {"action":"move","direction":"forward","duration":2}
 
-Move backward for 3 seconds:
+User: Move backward for 3 seconds.
+Output:
 {"action":"move","direction":"backward","duration":3}
 
-Turn left:
+User: Turn left.
+Output:
 {"action":"turn","direction":"left","duration":1}
 
-Turn right:
+User: Turn right.
+Output:
 {"action":"turn","direction":"right","duration":1}
 
-Stop:
+User: Stop.
+Output:
 {"action":"stop"}
 
-Rules:
-- Output ONLY JSON.
-- Do not explain anything.
-- Do not use Markdown.
-- Do not add text before or after JSON.
-"""
+User command:
+""" + user_command + """
 
-        prompt = system_prompt + "\nUser command: " + user_command
+Output:
+"""
 
         payload = {
             "prompt": prompt,
             "n_predict": 40,
-            "temperature": 0.0
+            "temperature": 0.0,
+            "stop": [
+                "\nUser:",
+                "\nOutput:"
+            ]
         }
 
         try:
@@ -193,7 +216,10 @@ Rules:
 
             data = response.json()
 
-            content = data.get("content", "").strip()
+            content = data.get(
+                "content",
+                ""
+            ).strip()
 
             rospy.loginfo(
                 "LLM response: %s",
@@ -211,9 +237,9 @@ Rules:
 
             return None
 
-    # ======================================================
+    # ==========================================================
     # JSON PARSER
-    # ======================================================
+    # ==========================================================
 
     def parse_command(self, response):
 
@@ -222,7 +248,7 @@ Rules:
 
         try:
 
-            # Remove accidental Markdown fences
+            # Remove Markdown fences if the model adds them.
             response = response.replace(
                 "```json",
                 ""
@@ -235,23 +261,21 @@ Rules:
 
             response = response.strip()
 
-            # Find JSON object if model adds extra text
             start = response.find("{")
             end = response.rfind("}")
 
             if start == -1 or end == -1:
                 rospy.logerr(
-                    "No JSON object found in LLM response"
+                    "No JSON object found."
                 )
                 return None
 
-            json_text = response[start:end + 1]
+            json_text = response[
+                start:end + 1
+            ]
 
-            command = json.loads(json_text)
-
-            rospy.loginfo(
-                "Parsed command: %s",
-                json.dumps(command)
+            command = json.loads(
+                json_text
             )
 
             return command
@@ -259,111 +283,119 @@ Rules:
         except Exception as e:
 
             rospy.logerr(
-                "Invalid JSON from LLM: %s",
+                "Invalid JSON: %s",
                 str(e)
             )
 
             return None
 
-    # ======================================================
-    # COMMAND VALIDATION
-    # ======================================================
+    # ==========================================================
+    # VALIDATION
+    # ==========================================================
 
     def validate_command(self, command):
 
-        if not isinstance(command, dict):
+        if not isinstance(
+            command,
+            dict
+        ):
             return False
 
-        action = command.get("action")
+        action = command.get(
+            "action"
+        )
 
-        allowed_actions = [
+        if action not in [
             "move",
             "stop",
             "turn"
-        ]
-
-        if action not in allowed_actions:
+        ]:
             rospy.logerr(
                 "Invalid action: %s",
                 action
             )
             return False
 
-        if action != "stop":
+        if action == "stop":
+            return True
 
-            direction = command.get("direction")
+        direction = command.get(
+            "direction"
+        )
 
-            allowed_directions = [
-                "forward",
-                "backward",
-                "left",
-                "right"
-            ]
+        if direction not in [
+            "forward",
+            "backward",
+            "left",
+            "right"
+        ]:
+            rospy.logerr(
+                "Invalid direction: %s",
+                direction
+            )
+            return False
 
-            if direction not in allowed_directions:
+        try:
 
-                rospy.logerr(
-                    "Invalid direction: %s",
-                    direction
+            duration = float(
+                command.get(
+                    "duration",
+                    1
                 )
-
-                return False
-
-            duration = command.get(
-                "duration",
-                1
             )
 
-            try:
+        except Exception:
 
-                duration = float(duration)
+            rospy.logerr(
+                "Invalid duration."
+            )
 
-            except:
+            return False
 
-                rospy.logerr(
-                    "Invalid duration"
-                )
+        # Safety limit
+        if duration <= 0:
+            return False
 
-                return False
-
-            # Safety limit
-            if duration <= 0 or duration > 10:
-
-                rospy.logerr(
-                    "Unsafe duration: %.2f",
-                    duration
-                )
-
-                return False
+        if duration > 10:
+            rospy.logerr(
+                "Duration exceeds safety limit."
+            )
+            return False
 
         return True
 
-    # ======================================================
-    # ROBOT MOVEMENT
-    # ======================================================
+    # ==========================================================
+    # EXECUTE
+    # ==========================================================
 
     def execute_command(self, command):
 
-        if not self.validate_command(command):
+        if not self.validate_command(
+            command
+        ):
             return
 
-        action = command["action"]
+        action = command.get(
+            "action"
+        )
 
-        # --------------------------------------------------
+        # ------------------------------------------------------
         # STOP
-        # --------------------------------------------------
+        # ------------------------------------------------------
 
         if action == "stop":
 
             rospy.loginfo(
-                "Executing STOP"
+                "STOP command."
             )
 
             self.stop_robot()
 
             return
 
-        direction = command["direction"]
+        direction = command.get(
+            "direction"
+        )
 
         duration = float(
             command.get(
@@ -372,17 +404,20 @@ Rules:
             )
         )
 
-        # --------------------------------------------------
-        # SAFETY CHECK
-        # --------------------------------------------------
-
-        # Only block forward movement when a REAL
-        # obstacle is detected.
+        # ------------------------------------------------------
+        # FORWARD SAFETY CHECK
+        # ------------------------------------------------------
 
         if direction == "forward":
 
-            if math.isfinite(
-                self.front_distance
+            if (
+                not math.isnan(
+                    self.front_distance
+                )
+                and
+                not math.isinf(
+                    self.front_distance
+                )
             ):
 
                 rospy.loginfo(
@@ -390,11 +425,10 @@ Rules:
                     self.front_distance
                 )
 
-                # Emergency stop distance
                 if self.front_distance < 0.30:
 
                     rospy.logwarn(
-                        "Obstacle too close! "
+                        "Obstacle too close. "
                         "Forward movement cancelled."
                     )
 
@@ -402,9 +436,9 @@ Rules:
 
                     return
 
-        # --------------------------------------------------
+        # ------------------------------------------------------
         # DRY RUN
-        # --------------------------------------------------
+        # ------------------------------------------------------
 
         if self.dry_run:
 
@@ -420,62 +454,60 @@ Rules:
 
             return
 
-        # --------------------------------------------------
-        # REAL MOVEMENT
-        # --------------------------------------------------
+        # ------------------------------------------------------
+        # REAL ROBOT MOVEMENT
+        # ------------------------------------------------------
 
         twist = Twist()
 
-        speed = 0.2
+        linear_speed = 0.20
+        angular_speed = 0.50
 
         if action == "move":
 
             if direction == "forward":
-
-                twist.linear.x = speed
+                twist.linear.x = linear_speed
 
             elif direction == "backward":
-
-                twist.linear.x = -speed
+                twist.linear.x = -linear_speed
 
         elif action == "turn":
 
-            turn_speed = 0.5
-
             if direction == "left":
-
-                twist.angular.z = turn_speed
+                twist.angular.z = angular_speed
 
             elif direction == "right":
-
-                twist.angular.z = -turn_speed
-
-        rospy.loginfo(
-            "Executing: %s %s for %.2f seconds",
-            action,
-            direction,
-            duration
-        )
+                twist.angular.z = -angular_speed
 
         rate = rospy.Rate(10)
 
-        start_time = rospy.Time.now()
+        start_time = time.time()
 
         while (
-            rospy.Time.now() - start_time
-        ).to_sec() < duration:
+            time.time() - start_time
+        ) < duration:
 
-            # Continuous emergency check
+            if rospy.is_shutdown():
+                break
+
+            # Emergency LiDAR check
             if direction == "forward":
 
-                if math.isfinite(
-                    self.front_distance
+                if (
+                    not math.isnan(
+                        self.front_distance
+                    )
+                    and
+                    not math.isinf(
+                        self.front_distance
+                    )
                 ):
 
                     if self.front_distance < 0.30:
 
                         rospy.logwarn(
-                            "Obstacle detected during movement!"
+                            "Obstacle detected! "
+                            "Emergency stop."
                         )
 
                         break
@@ -488,9 +520,9 @@ Rules:
 
         self.stop_robot()
 
-    # ======================================================
-    # STOP ROBOT
-    # ======================================================
+    # ==========================================================
+    # STOP
+    # ==========================================================
 
     def stop_robot(self):
 
@@ -508,37 +540,40 @@ Rules:
             twist
         )
 
-    # ======================================================
+    # ==========================================================
     # LIDAR STATUS
-    # ======================================================
+    # ==========================================================
+
+    def format_distance(self, value):
+
+        if (
+            not math.isnan(value)
+            and
+            not math.isinf(value)
+        ):
+            return "%.2f m" % value
+
+        return "no valid return"
 
     def print_lidar_state(self):
-
-        def format_distance(value):
-
-            if math.isfinite(value):
-
-                return "%.2f m" % value
-
-            return "no valid return"
 
         rospy.loginfo(
             "[DRY RUN] LiDAR | "
             "Front: %s | Left: %s | Right: %s",
-            format_distance(
+            self.format_distance(
                 self.front_distance
             ),
-            format_distance(
+            self.format_distance(
                 self.left_distance
             ),
-            format_distance(
+            self.format_distance(
                 self.right_distance
             )
         )
 
-    # ======================================================
+    # ==========================================================
     # MAIN LOOP
-    # ======================================================
+    # ==========================================================
 
     def run(self):
 
@@ -564,14 +599,11 @@ Rules:
                 user_command
             )
 
-            # --------------------------------------------------
             # Direct emergency stop
-            # --------------------------------------------------
-
             if user_command.lower() in [
                 "stop",
-                "emergency stop",
-                "halt"
+                "halt",
+                "emergency stop"
             ]:
 
                 self.stop_robot()
@@ -582,50 +614,36 @@ Rules:
 
                 continue
 
-            # --------------------------------------------------
             # Ask LLM
-            # --------------------------------------------------
-
             response = self.ask_llm(
                 user_command
             )
 
             if response is None:
-
-                rospy.logerr(
-                    "No response from LLM."
-                )
-
                 continue
 
-            # --------------------------------------------------
             # Parse JSON
-            # --------------------------------------------------
-
             command = self.parse_command(
                 response
             )
 
             if command is None:
-
-                rospy.logerr(
-                    "Could not parse LLM command."
-                )
-
                 continue
 
-            # --------------------------------------------------
-            # Execute
-            # --------------------------------------------------
+            rospy.loginfo(
+                "Parsed command: %s",
+                json.dumps(command)
+            )
 
+            # Execute
             self.execute_command(
                 command
             )
 
 
-# ==========================================================
-# PROGRAM ENTRY
-# ==========================================================
+# ==============================================================
+# ENTRY POINT
+# ==============================================================
 
 if __name__ == "__main__":
 
@@ -667,6 +685,46 @@ Enter robot command: Move forward for 2 seconds.
 [INFO] [1787493975.567392]: LLM response: {"action": "move", "direction": "forward", "duration": 2}
 [INFO] [1787493975.573785]: Parsed command: {"action": "move", "direction": "forward", "duration": 2}
 [INFO] [1787493975.579202]: [DRY RUN] Would execute: move forward for 2.0 seconds
+
+---
+jetauto@jetauto-desktop:~/catkin_ws$ rosrun jetauto_llm llm_robot_node.py
+[INFO] [1787495792.454782]: LLM Robot Node started
+[INFO] [1787495792.459603]: DRY_RUN = True
+Enter robot command: Move forward for 2 seconds.
+[INFO] [1787495799.044617]: User command: Move forward for 2 seconds.
+[INFO] [1787495806.929139]: LLM response: {"action":"move","direction":"forward","duration":2}
+[INFO] [1787495806.934492]: Parsed command: {"action": "move", "duration": 2, "direction": "forward"}
+[INFO] [1787495806.939826]: [DRY RUN] Would execute: move forward for 2.00 seconds
+[INFO] [1787495806.946225]: [DRY RUN] LiDAR | Front: no valid return | Left: no valid return | Right: 0.50 m
+Enter robot command: Move forward for 2 seconds.
+[INFO] [1787495875.643300]: User command: Move forward for 2 seconds.
+[INFO] [1787495879.321861]: LLM response: {"action":"move","direction":"forward","duration":2}
+[INFO] [1787495879.327486]: Parsed command: {"action": "move", "duration": 2, "direction": "forward"}
+[INFO] [1787495879.331905]: [DRY RUN] Would execute: move forward for 2.00 seconds
+[INFO] [1787495879.336578]: [DRY RUN] LiDAR | Front: no valid return | Left: 0.20 m | Right: 0.50 m
+Enter robot command: Move backward for 2 seconds.
+[INFO] [1787495884.648469]: User command: Move backward for 2 seconds.
+[INFO] [1787495888.981519]: LLM response: {"action":"move","direction":"backward","duration":2}
+[INFO] [1787495888.986599]: Parsed command: {"action": "move", "duration": 2, "direction": "backward"}
+[INFO] [1787495888.991602]: [DRY RUN] Would execute: move backward for 2.00 seconds
+[INFO] [1787495888.996772]: [DRY RUN] LiDAR | Front: no valid return | Left: 0.20 m | Right: 0.50 m
+Enter robot command: Turn left for 2 seconds.
+[INFO] [1787495903.184956]: User command: Turn left for 2 seconds.
+[INFO] [1787495908.118601]: LLM response: {"action":"turn","direction":"left","duration":2}
+[INFO] [1787495908.123646]: Parsed command: {"action": "turn", "duration": 2, "direction": "left"}
+[INFO] [1787495908.128181]: [DRY RUN] Would execute: turn left for 2.00 seconds
+[INFO] [1787495908.132474]: [DRY RUN] LiDAR | Front: no valid return | Left: 0.20 m | Right: 0.50 m
+Enter robot command: Turn right for 2 seconds.
+[INFO] [1787495912.402220]: User command: Turn right for 2 seconds.
+[INFO] [1787495916.693335]: LLM response: {"action":"turn","direction":"right","duration":2}
+[INFO] [1787495916.698619]: Parsed command: {"action": "turn", "duration": 2, "direction": "right"}
+[INFO] [1787495916.703784]: [DRY RUN] Would execute: turn right for 2.00 seconds
+[INFO] [1787495916.709076]: [DRY RUN] LiDAR | Front: no valid return | Left: 0.20 m | Right: 0.50 m
+Enter robot command: Stop.
+[INFO] [1787495919.568104]: User command: Stop.
+[INFO] [1787495921.553681]: LLM response: {"action":"stop"}
+[INFO] [1787495921.558952]: Parsed command: {"action": "stop"}
+[INFO] [1787495921.563870]: STOP command.
 """
 ---
 
@@ -682,3 +740,5 @@ run:
 source ~/catkin_ws/devel/setup.bash
 rosrun jetauto_llm llm_robot_node.py
 """
+
+
