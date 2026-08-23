@@ -2,7 +2,7 @@ cd /mnt/llm/builds/llama.cpp
 
 bin/llama-server \
   -m /mnt/llm/models/qwen2.5-1.5b-instruct-q4_k_m.gguf \
-  -ngl 0 \
+  -ngl 99 \
   -c 1024 \
   -t 4 \
   -tb 4 \
