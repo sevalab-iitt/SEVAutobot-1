@@ -1,15 +1,9 @@
-cd /mnt/llm/builds/llama.cpp
+========================================
+JETSON LLAMA.CPP + QWEN STARTUP
+========================================
 
-bin/llama-server \
-  -m /mnt/llm/models/qwen2.5-1.5b-instruct-q4_k_m.gguf \
-  -ngl 99 \
-  -c 1024 \
-  -t 4 \
-  -tb 4 \
-  --host 127.0.0.1 \
-  --port 8081
-
-or
+1. START LLM SERVER
+-------------------
 
 cd /mnt/llm/builds/llama.cpp
 
@@ -21,19 +15,22 @@ bin/llama-server \
   -tb 4 \
   --host 127.0.0.1 \
   --port 8081 \
-  --jinja \
-  --alias qwen2.5-1.5b
+  --chat-template qwen2
 
 
+2. CHECK SERVER
+---------------
 
----
-TO VERIFY HEALTH STATUS
----
 curl http://127.0.0.1:8081/health
 
----
-TO VERIFY WORKING 
----
+Expected:
+
+{"status":"ok"}
+
+
+3. TEST LLM
+-----------
+
 curl http://127.0.0.1:8081/completion \
   -H "Content-Type: application/json" \
   -d '{
@@ -42,13 +39,56 @@ curl http://127.0.0.1:8081/completion \
     "temperature": 0
   }'
 
----
-FOR TESTING ROBOT JSON
----
-curl http://127.0.0.1:8081/completion \
-  -H "Content-Type: application/json" \
-  -d '{
-    "prompt": "You control a mobile robot. Output ONLY valid JSON. No explanation. User command: Move forward for 2 seconds.",
-    "n_predict": 20,
-    "temperature": 0
-  }'
+
+4. IF OUTPUT IS GGGGG
+---------------------
+
+DO NOT START ROS LLM NODE.
+
+Check:
+
+curl http://127.0.0.1:8081/health
+
+Then verify the server was started with:
+
+--chat-template qwen2
+
+Also verify the model:
+
+qwen2.5-1.5b-instruct-q4_k_m.gguf
+
+
+5. CHECK ROBOT ROS
+------------------
+
+source ~/catkin_ws/devel/setup.bash
+
+rosnode list | grep -E 'jetauto_controller|rplidarNode'
+
+rostopic hz /scan
+
+
+6. START LLM ROBOT NODE
+-----------------------
+
+source ~/catkin_ws/devel/setup.bash
+
+rosrun jetauto_llm llm_robot_node.py
+
+
+7. TEST COMMAND
+---------------
+
+Move forward for 1 second.
+
+Then:
+
+Stop.
+
+
+8. IMPORTANT
+------------
+
+LLM server must be running BEFORE starting:
+
+rosrun jetauto_llm llm_robot_node.py
