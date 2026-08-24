@@ -222,3 +222,7 @@ class ObstacleAvoidance(object):
                 fmt(self.right_distance)
             )
         )
+
+"""
+python2 -c "import sys; sys.path.insert(0, '$HOME/catkin_ws/src/jetauto_llm/scripts'); from robot.obstacle_avoidance import ObstacleAvoidance; print('OBSTACLE AVOIDANCE MODULE OK')"
+"""
