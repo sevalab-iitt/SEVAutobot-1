@@ -1,4 +1,4 @@
-# Autonomous Navigation System Investigation
+# Autonomous Navigation Investigation
 
 ## 1. Objective
 
@@ -12,8 +12,8 @@ The final navigation pipeline should provide:
 Sensors
    │
    ├── RPLIDAR A1
-   ├── Wheel/robot odometry
-   └── Camera (where required)
+   ├── Wheel / robot odometry
+   └── Camera where required
    │
    ▼
 ROS Drivers
@@ -32,7 +32,7 @@ SLAM / Localization
 Map + Robot Pose
    │
    ▼
-Navigation Stack
+ROS1 Navigation Stack
    │
    ├── Global Costmap
    ├── Local Costmap
@@ -51,23 +51,22 @@ Motors
 
 ---
 
-## 2. Robot ROS Environment
+# 2. Robot Environment
 
-The robot currently uses:
+The current robot environment is:
 
-* Jetson Nano
-* Ubuntu 18.04
-* ROS Melodic
-* ROS1
-* JetAutoPro platform
+| Component        | Configuration              |
+| ---------------- | -------------------------- |
+| Robot            | JetAutoPro                 |
+| Main computer    | NVIDIA Jetson Nano         |
+| OS               | Ubuntu 18.04               |
+| ROS              | ROS Melodic                |
+| ROS architecture | ROS1                       |
+| LiDAR            | RPLIDAR A1                 |
+| Depth camera     | Orbbec Astra Pro Plus      |
+| Workspace        | `/home/jetauto/jetauto_ws` |
 
-The main ROS workspace is:
-
-```text
-/home/jetauto/jetauto_ws
-```
-
-The source directory is:
+The main ROS source directory is:
 
 ```text
 /home/jetauto/jetauto_ws/src
@@ -75,9 +74,9 @@ The source directory is:
 
 ---
 
-## 3. Existing ROS Packages
+# 3. Existing ROS Packages
 
-The following packages were found inside the workspace:
+The following packages were found:
 
 ```text
 jetauto_app
@@ -96,299 +95,414 @@ third_party
 xf_mic_asr_offline
 ```
 
-The two most important packages for this investigation are:
+The primary packages for autonomous navigation are:
 
 ```text
-jetauto_navigation
 jetauto_slam
-```
-
-### Navigation package
-
-Location:
-
-```text
-/home/jetauto/jetauto_ws/src/jetauto_navigation
-```
-
-### SLAM package
-
-Location:
-
-```text
-/home/jetauto/jetauto_ws/src/jetauto_slam
-```
-
----
-
-## 4. Initial Package Search
-
-### Command
-
-```bash
-cd ~/jetauto_ws/src
-ls
-```
-
-### Result
-
-```text
-jetauto_app
-jetauto_interfaces
-jetauto_slam
-jetauto_bringup
-jetauto_multi
-lidar_cloud
-jetauto_calibration
 jetauto_navigation
-scan_drivers.py
-jetauto_driver
-jetauto_peripherals
-jetauto_example
-jetauto_simulations
-xf_mic_asr_offline
-third_party
 ```
-
-This confirms that the vendor's navigation and SLAM source packages are available locally.
 
 ---
 
-## 5. Navigation and SLAM Directory Search
+# 4. Navigation and SLAM Launch Files
 
-### Command
-
-```bash
-find ~/jetauto_ws/src -type d \( -name "*navigation*" -o -name "*slam*" \) | sort
-```
-
-### Result
-
-```text
-/home/jetauto/jetauto_ws/src/jetauto_example/launch/orb_slam_demo
-/home/jetauto/jetauto_ws/src/jetauto_example/scripts/navigation_transport
-/home/jetauto/jetauto_ws/src/jetauto_multi/launch/multi_navigation
-/home/jetauto/jetauto_multi/launch/multi_slam
-/home/jetauto/jetauto_ws/src/jetauto_navigation
-/home/jetauto/jetauto_ws/src/jetauto_slam
-```
-
-### Observation
-
-There are multiple navigation/SLAM-related components.
-
-The primary packages appear to be:
-
-```text
-jetauto_navigation
-jetauto_slam
-```
-
-There are also additional examples and multi-robot implementations:
-
-```text
-jetauto_example/launch/orb_slam_demo
-jetauto_example/scripts/navigation_transport
-jetauto_multi/launch/multi_navigation
-jetauto_multi/launch/multi_slam
-```
-
-These should not be modified unless they are later found to be part of the actual JetAuto desktop navigation workflow.
-
----
-
-## 6. Existing User Files and Robot Data
-
-The home directory also contains several files and directories related to previous mapping and navigation experiments.
-
-Examples include:
-
-```text
-my_map.pgm
-my_map.yaml
-my_map1.pgm
-my_map1.yaml
-
-trtabmap.pgm
-trtabmap.yaml
-trtabmap1.pgm
-trtabmap1.yaml
-trtabmap2.pgm
-trtabmap2.yaml
-
-rtabmap_maps/
-.rtabmap/
-.ros/
-```
-
-There are also ROS and robot logs:
-
-```text
-robot_bringup.log
-jetauto_ros_topics.txt
-jetauto_session_20260625_102652.log
-rosgraph_active.dot
-terminal_log.txt
-```
-
-These may be useful when debugging the existing system.
-
----
-
-## 7. Current Investigation Strategy
-
-The existing navigation implementation will be investigated before making changes.
-
-The investigation follows this order:
-
-```text
-Desktop Navigation Shortcut
-          │
-          ▼
-Startup Script
-          │
-          ▼
-ROS Launch File
-          │
-          ▼
-ROS Nodes
-          │
-          ├── Drivers
-          ├── LiDAR
-          ├── Odometry
-          ├── TF
-          ├── Localization
-          ├── move_base
-          ├── Costmaps
-          └── Planners
-          │
-          ▼
-       /cmd_vel
-          │
-          ▼
-JetAuto Motor Controller
-```
-
-The objective is to determine which component fails when the vendor navigation system is launched.
-
----
-
-## 8. Next Investigation Commands
-
-The following commands will identify all navigation-related launch files.
+The following launch files were found using:
 
 ```bash
 find ~/jetauto_ws/src -type f \
-  \( -name "*.launch" -o -name "*.launch.xml" \) \
-  | grep -Ei "nav|slam|rviz|move"
+\( -name "*.launch" -o -name "*.launch.xml" \) \
+| grep -Ei "nav|slam|rviz|move"
 ```
 
-Then inspect the ROS package registry:
+## SLAM
+
+```text
+/home/jetauto/jetauto_ws/src/jetauto_slam/launch/slam.launch
+
+/home/jetauto/jetauto_ws/src/jetauto_slam/launch/rviz_slam.launch
+
+/home/jetauto/jetauto_ws/src/jetauto_slam/launch/include/rtabmap.launch
+/home/jetauto/jetauto_ws/src/jetauto_slam/launch/include/explore.launch
+/home/jetauto/jetauto_ws/src/jetauto_slam/launch/include/depthimage_to_laserscan.launch
+/home/jetauto/jetauto_ws/src/jetauto_slam/launch/include/karto.launch
+/home/jetauto/jetauto_ws/src/jetauto_slam/launch/include/slam_base.launch
+/home/jetauto/jetauto_ws/src/jetauto_slam/launch/include/hector.launch
+/home/jetauto/jetauto_ws/src/jetauto_slam/launch/include/gmapping.launch
+/home/jetauto/jetauto_ws/src/jetauto_slam/launch/include/cartographer.launch
+/home/jetauto/jetauto_ws/src/jetauto_slam/launch/include/rrt_exploration.launch
+/home/jetauto/jetauto_ws/src/jetauto_slam/launch/include/ekf.launch
+/home/jetauto/jetauto_ws/src/jetauto_slam/launch/include/frontier.launch
+/home/jetauto/jetauto_ws/src/jetauto_slam/launch/include/jetauto_robot.launch
+```
+
+This shows that the vendor SLAM package supports multiple SLAM approaches, including:
+
+* GMapping
+* RTAB-Map
+* Karto
+* Hector
+* Cartographer
+* Frontier exploration
+* RRT exploration
+* EKF-related processing
+
+---
+
+# 5. Navigation Launch Files
+
+The navigation package contains:
+
+```text
+/home/jetauto/jetauto_ws/src/jetauto_navigation/launch/navigation.launch
+
+/home/jetauto/jetauto_ws/src/jetauto_navigation/launch/rviz_rtabmap_navigation.launch
+
+/home/jetauto/jetauto_ws/src/jetauto_navigation/launch/publish_point.launch
+
+/home/jetauto/jetauto_ws/src/jetauto_navigation/launch/include/navigation_base.launch
+
+/home/jetauto/jetauto_ws/src/jetauto_navigation/launch/include/load_map.launch
+
+/home/jetauto/jetauto_ws/src/jetauto_navigation/launch/include/move_base.launch
+
+/home/jetauto/jetauto_navigation/launch/include/amcl.launch
+
+/home/jetauto/jetauto_navigation/launch/rtabmap_navigation.launch
+
+/home/jetauto/jetauto_navigation/launch/rviz_navigation.launch
+```
+
+The presence of `move_base.launch`, `amcl.launch`, costmap-related navigation files, and `navigation_base.launch` indicates that this is a ROS1 navigation stack rather than a ROS2/Nav2 stack.
+
+---
+
+# 6. ROS Package Verification
+
+The command:
 
 ```bash
-source /opt/ros/melodic/setup.bash
-source ~/jetauto_ws/devel/setup.bash
-
 rospack list | grep -Ei "jetauto|hiwonder|navigation|slam|move"
 ```
 
-The exact output should be recorded here after execution.
+confirmed that the navigation packages are registered in the ROS environment.
 
----
-
-## 9. Important Principle
-
-RViz is not the navigation system itself.
-
-RViz provides visualization and interfaces such as:
+Important packages include:
 
 ```text
-2D Pose Estimate
-2D Nav Goal
-Map visualization
-LaserScan visualization
-TF visualization
-Costmap visualization
-```
-
-The actual autonomous navigation is performed by ROS navigation nodes.
-
-A typical ROS1 navigation chain is:
-
-```text
-RViz
- │
- │ navigation goal
- ▼
+jetauto_bringup
+jetauto_controller
+jetauto_driver
+jetauto_navigation
+jetauto_slam
+jetauto_sdk
+jetauto_peripherals
 move_base
- │
- ├── Global Costmap
- ├── Local Costmap
- ├── Global Planner
- └── Local Planner
- │
- ▼
-/cmd_vel
- │
- ▼
-JetAuto Driver
- │
- ▼
-Robot Motion
+move_base_msgs
+openslam_gmapping
+rplidar_ros
 ```
 
-Therefore, opening RViz successfully does not prove that autonomous navigation is working.
-
----
-
-## 10. Known Working Components
-
-Previous project work established that the robot can perform:
-
-* GMapping-based mapping
-* RTAB-Map mapping/localization
-* RPLIDAR A1 operation
-* Robot odometry/TF investigation
-* JetAuto motor/control operation
-
-Therefore, the existing components should be reused where possible.
-
-The current objective is primarily to complete and repair:
+Relevant vendor packages:
 
 ```text
-Localization
-       ↓
-TF
-       ↓
-Navigation Costmaps
-       ↓
-Global Planner
-       ↓
-Local Planner
-       ↓
-/cmd_vel
-       ↓
-Robot Motion
+jetauto_bringup
+/home/jetauto/jetauto_ws/src/jetauto_bringup
+
+jetauto_controller
+/home/jetauto/jetauto_ws/src/jetauto_driver/jetauto_controller
+
+jetauto_driver
+/home/jetauto/jetauto_ws/src/jetauto_driver
+
+jetauto_navigation
+/home/jetauto/jetauto_ws/src/jetauto_navigation
+
+jetauto_slam
+/home/jetauto/jetauto_ws/src/jetauto_slam
+```
+
+This confirms that the standard ROS1 `move_base` package is installed and that the JetAuto-specific navigation package is available.
+
+---
+
+# 7. Desktop Application Entry Points
+
+The desktop contains the following relevant application files:
+
+```text
+/home/jetauto/Desktop/slam.desktop
+
+/home/jetauto/Desktop/navigation.desktop
+
+/home/jetauto/Desktop/slam_automatic.desktop
+```
+
+The command:
+
+```bash
+grep -RniE "navigation|slam" ~/Desktop 2>/dev/null
+```
+
+returned the following important entries.
+
+## SLAM
+
+```text
+/home/jetauto/Desktop/slam.desktop
+Exec=bash /home/jetauto/jetauto_ws/src/jetauto_bringup/scripts/slam.sh
+```
+
+Therefore:
+
+```text
+Desktop SLAM icon
+        │
+        ▼
+slam.sh
+        │
+        ▼
+SLAM launch system
+```
+
+## Navigation
+
+```text
+/home/jetauto/Desktop/navigation.desktop
+Exec=bash /home/jetauto/jetauto_ws/src/jetauto_bringup/scripts/navigation.sh
+```
+
+Therefore:
+
+```text
+Desktop Navigation icon
+        │
+        ▼
+navigation.sh
+        │
+        ▼
+Navigation launch system
+```
+
+## Autonomous SLAM
+
+```text
+/home/jetauto/Desktop/slam_automatic.desktop
+Exec=bash /home/jetauto/jetauto_ws/src/jetauto_bringup/scripts/slam_automatic.sh
+```
+
+Therefore:
+
+```text
+Desktop SLAM Automatic icon
+        │
+        ▼
+slam_automatic.sh
+        │
+        ▼
+Autonomous mapping system
 ```
 
 ---
 
-## 11. Changes Policy
+# 8. Important Discovery
 
-Before modifying vendor files:
+The desktop icons do not directly execute RViz.
 
-1. Identify the original launch file.
-2. Record the original configuration.
-3. Identify the failing node.
-4. Record the error.
-5. Determine the cause.
-6. Make the smallest required change.
-7. Test again.
-8. Document the change.
-9. Commit the change to Git.
+The current architecture is:
 
-Vendor source files should not be modified blindly.
+```text
+                         ┌──────────────────────┐
+                         │   Desktop Shortcut   │
+                         └──────────┬───────────┘
+                                    │
+                 ┌──────────────────┼──────────────────┐
+                 │                  │                  │
+                 ▼                  ▼                  ▼
+             slam.sh          navigation.sh     slam_automatic.sh
+                 │                  │                  │
+                 ▼                  ▼                  ▼
+            SLAM stack       Navigation stack    Auto mapping
+                 │                  │
+                 ▼                  ▼
+              RViz             RViz
+```
+
+The next investigation must therefore inspect these shell scripts.
 
 ---
 
-The next step is to identify the exact launch files and startup scripts used by the vendor's Navigation and SLAM applications.
+# 9. Next Step: Inspect Vendor Startup Scripts
+
+The following commands will be used:
+
+```bash
+sed -n '1,240p' \
+~/jetauto_ws/src/jetauto_bringup/scripts/navigation.sh
+```
+
+```bash
+sed -n '1,240p' \
+~/jetauto_ws/src/jetauto_bringup/scripts/slam.sh
+```
+
+```bash
+sed -n '1,240p' \
+~/jetauto_ws/src/jetauto_bringup/scripts/slam_automatic.sh
+```
+
+The scripts will be treated as the entry point for tracing the complete vendor pipeline.
+
+---
+
+# 10. Navigation Pipeline Investigation
+
+After inspecting `navigation.sh`, the referenced launch files will be inspected.
+
+Expected chain:
+
+```text
+navigation.sh
+     │
+     ▼
+navigation.launch
+     │
+     ├── load_map.launch
+     │
+     ├── navigation_base.launch
+     │
+     ├── move_base.launch
+     │
+     ├── amcl.launch
+     │
+     └── RViz
+```
+
+The exact chain must be verified from the source files before making any assumptions.
+
+---
+
+# 11. Navigation Components to Verify
+
+The following components will be checked individually:
+
+### A. Robot drivers
+
+```text
+JetAuto driver
+STM32 controller
+wheel encoders
+```
+
+### B. LiDAR
+
+```text
+RPLIDAR A1
+/scan
+```
+
+### C. Odometry
+
+```text
+/odom
+```
+
+### D. TF
+
+Expected important transforms:
+
+```text
+map
+ └── odom
+      └── base_footprint / base_link
+           └── laser
+```
+
+The exact frame names will be obtained from the running system.
+
+### E. Localization
+
+Possible implementation:
+
+```text
+AMCL
+```
+
+or:
+
+```text
+RTAB-Map localization
+```
+
+depending on the selected navigation mode.
+
+### F. Navigation
+
+```text
+move_base
+```
+
+### G. Costmaps
+
+```text
+global_costmap
+local_costmap
+```
+
+### H. Planners
+
+The exact global and local planner plugins will be obtained from the configuration files.
+
+### I. Robot command
+
+```text
+/cmd_vel
+```
+
+The final command must reach the JetAuto controller.
+
+---
+
+# 12. Vendor Documentation Reference
+
+The Hiwonder documentation states that ROS1 autonomous navigation is intended for the Jetson Nano controller. It describes using the Navigation desktop icon, setting the initial pose with `2D Pose Estimate`, selecting destinations with `2D Nav Goal`, and starting navigation.
+
+The documentation also states that the Navigation function reads the most recently created map.
+
+The vendor documentation identifies the Jetson Nano environment as Ubuntu 18.04 with ROS Melodic, matching the current robot environment.
+
+Reference:
+
+https://wiki.hiwonder.com/projects/JetAuto/en/jetauto-orin-nano/docs/1.quick_start_guide.html#_1-10-autonomous-navigation
+
+---
+
+# 13. Current Status
+
+```text
+[✓] JetAuto workspace identified
+[✓] ROS Melodic environment confirmed
+[✓] jetauto_slam package identified
+[✓] jetauto_navigation package identified
+[✓] SLAM launch files identified
+[✓] Navigation launch files identified
+[✓] move_base package confirmed
+[✓] Desktop SLAM shortcut identified
+[✓] Desktop Navigation shortcut identified
+[✓] Desktop SLAM Automatic shortcut identified
+
+[ ] navigation.sh inspected
+[ ] slam.sh inspected
+[ ] slam_automatic.sh inspected
+[ ] navigation.launch inspected
+[ ] navigation_base.launch inspected
+[ ] move_base.launch inspected
+[ ] load_map.launch inspected
+[ ] AMCL configuration inspected
+[ ] Costmap configuration inspected
+[ ] TF tree verified
+[ ] Navigation nodes tested
+[ ] Navigation error reproduced
+[ ] Root cause identified
+[ ] Navigation repaired
+[ ] End-to-end navigation tested
+[ ] Git commit created
