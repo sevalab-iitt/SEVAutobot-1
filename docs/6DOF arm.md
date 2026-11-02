@@ -41,7 +41,7 @@ The robotic arm consists of a series of connected sections, movable joints, and 
 <img width="379" height="527" alt="image" src="https://github.com/user-attachments/assets/3edd407b-75db-4f9c-b7e1-c74d9a872f38" />
 
 <div align="center">
-  <img src="[https://example.com](https://www.google.com/imgres?q=Robotic%20arm%20assembly%20mounted%20on%20the%20JetAuto%20Pro%20platform&imgurl=https%3A%2F%2Fm.media-amazon.com%2Fimages%2FI%2F61PaWlSCQUL._AC_SL3840_.jpg&imgrefurl=https%3A%2F%2Fwww.desertcart.in%2Fproducts%2F530661465-hiwonderjetauto-pro-ros2-robot-car-with-5dof-ai-vision-robotic&docid=4tmxVApxlOzMEM&tbnid=B597e0ka-PzMAM&vet=12ahUKEwivqJKj1OiXAxVfR2wGHdIGGRIQnPAOegQIShAA..i&w=749&h=1040&hcb=2&itg=1&ved=2ahUKEwivqJKj1OiXAxVfR2wGHdIGGRIQnPAOegQIShAA)" alt="Centered Image">
+  <img src="https://github.com/user-attachments/assets/3edd407b-75db-4f9c-b7e1-c74d9a872f38" alt="Centered Image">
 </div>
 
 
