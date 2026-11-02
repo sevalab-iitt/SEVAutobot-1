@@ -28,7 +28,6 @@
 - [Quick Start](#quick-start)
 - [Repository Structure](#repository-structure)
 - [Documentation](#documentation)
-- [Roadmap](#roadmap)
 - [References](#references)
 - [License](#license)
 
@@ -182,24 +181,7 @@ jetauto_ws/
 
 ## Documentation
 
-Full technical documentation — including package references, TF frame hierarchy, and calibration guides — lives in the [`docs/`](./docs) directory and will be expanded as outlined in the [Roadmap](#roadmap).
-
----
-
-## Roadmap
-
-Planned additions to this documentation and platform include:
-
-- [ ] Complete ROS package reference
-- [ ] TF frame hierarchy documentation
-- [ ] Launch file reference
-- [ ] Sensor calibration guide
-- [ ] Performance benchmarking
-- [ ] Remote execution workflows
-- [ ] System diagnostics guide
-- [ ] Maintenance procedures
-- [ ] Developer contribution guide
-
+Full technical documentation — including package references, TF frame hierarchy, and calibration guides — lives in the [`docs/`](./docs) directory
 ---
 
 ## References
