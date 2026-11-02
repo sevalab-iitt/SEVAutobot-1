@@ -1,4 +1,18 @@
-# DOF 6 Robotic Arm
+# 6DOF Robotic Arm
+
+## Table of Contents
+
+1. [Introduction](#1-introduction)
+2. [Robotic Arm Overview](#2-robotic-arm-overview)
+3. [Hardware Communication](#3-hardware-communication)
+4. [ROS Software Architecture](#4-ros-software-architecture)
+5. [ROS Nodes and Controllers](#5-ros-nodes-and-controllers)
+6. [ROS Topics](#6-ros-topics)
+7. [Servo State Monitoring](#7-servo-state-monitoring)
+8. [System Verification](#8-system-verification)
+9. [Summary](#9-summary)
+
+---
 
 ## 1. Introduction
 
