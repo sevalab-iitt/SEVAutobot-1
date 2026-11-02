@@ -39,7 +39,7 @@ The robotic arm consists of a series of connected sections, movable joints, and 
 ### 2.1 Arm Mounted on JetAuto Pro
 
 <div align="center">
-  <img src="https://github.com/user-attachments/assets/3edd407b-75db-4f9c-b7e1-c74d9a872f38" width="100" alt="Centered Image">
+  <img src="https://github.com/user-attachments/assets/3edd407b-75db-4f9c-b7e1-c74d9a872f38" alt="Centered Image">
 </div>
 
 *Figure 1: DOF 6 robotic arm mounted on the JetAuto Pro platform.*
@@ -178,7 +178,8 @@ The main software components identified in the JetAuto Pro workspace are:
 
 The following simplified structure explains the communication flow:
 
-<img width="200" height="349" alt="sofcomro drawio" src="https://github.com/user-attachments/assets/44044f43-1d85-4d2c-b4d1-881f26cb2b5c" />
+<img width="200" height="349" alt="roscomro1 drawio" src="https://github.com/user-attachments/assets/8115ada7-6203-4808-9964-ce1b51fc0c06" />
+
 
 The servo manager handles communication with the servo hardware. Controllers receive movement commands and pass them to the appropriate servos.
 
