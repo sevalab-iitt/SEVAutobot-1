@@ -1,61 +1,147 @@
-# 6DOF Robotic Arm
+# DOF 6 Robotic Arm – Hardware and Software Documentation
 
 ## Table of Contents
 
 1. [Introduction](#1-introduction)
 2. [Robotic Arm Overview](#2-robotic-arm-overview)
-3. [Hardware Communication](#3-hardware-communication)
-4. [ROS Software Architecture](#4-ros-software-architecture)
-5. [ROS Nodes and Controllers](#5-ros-nodes-and-controllers)
-6. [ROS Topics](#6-ros-topics)
-7. [Servo State Monitoring](#7-servo-state-monitoring)
-8. [System Verification](#8-system-verification)
-9. [Summary](#9-summary)
+3. [Arm Components and Hardware](#3-arm-components-and-hardware)
+4. [Hardware Connection](#4-hardware-connection)
+5. [ROS Software Architecture](#5-ros-software-architecture)
+6. [ROS Nodes and Controllers](#6-ros-nodes-and-controllers)
+7. [ROS Communication Topics](#7-ros-communication-topics)
+8. [Servo State Monitoring](#8-servo-state-monitoring)
+9. [System Verification](#9-system-verification)
+10. [Summary](#10-summary)
 
 ---
 
 ## 1. Introduction
 
-A **6-DOF (Six Degrees of Freedom) Robotic Arm** is a robotic manipulator designed to move its end point in different directions and perform tasks that require controlled movement.
+The **DOF 6 Robotic Arm** is a robotic manipulator mounted on the JetAuto Pro mobile robot. It allows the robot to interact with objects in its surroundings by reaching, positioning, picking up, and moving objects.
 
-The term *Degrees of Freedom (DOF)* describes the number of independent movements a robot can make. Each degree of freedom represents one independent movement or rotation.
+DOF stands for *Degrees of Freedom*. It describes the number of independent movements a robotic mechanism can perform.
 
-A robotic arm can use these movements to:
+Each degree of freedom represents an independent movement or rotation. Multiple joints work together to position and orient the arm.
+
+The robotic arm uses servo motors to control its movements. The JetAuto Pro runs ROS (Robot Operating System), which provides the software interfaces required to communicate with the servo hardware and control the arm.
+
+### What can the robotic arm do?
+
 - Reach objects at different positions.
-- Change the orientation of its end effector.
-- Pick up and move objects.
-- Perform basic manipulation tasks.
-
-On the JetAuto Pro platform, the robotic arm uses servo motors for movement. ROS (Robot Operating System) provides the software interface to communicate with these motors, control individual joints, and coordinate arm movements.
+- Change the orientation of its end point.
+- Pick up and release objects using its gripper.
+- Perform basic object manipulation tasks.
 
 ## 2. Robotic Arm Overview
 
-<img width="409" height="488" alt="image" src="https://github.com/user-attachments/assets/d28b42e0-5fad-4d15-9353-3884da594e62" />
+The robotic arm consists of a series of connected sections, movable joints, and a gripper. Each joint contributes to the overall movement of the arm.
 
-<img width="379" height="527" alt="image" src="https://github.com/user-attachments/assets/7e410195-21af-423b-a2f9-58129b68ce17" />
+### 2.1 Arm Mounted on JetAuto Pro
 
-*Figure 1: Robotic arm assembly mounted on the JetAuto Pro platform.*
+<img width="379" height="527" alt="image" src="https://github.com/user-attachments/assets/3edd407b-75db-4f9c-b7e1-c74d9a872f38" />
 
-The arm consists of multiple movable joints connected to form a mechanical structure. Each joint controls a particular part of the arm.
+<div align="center">
+  <img src="[https://example.com](https://www.google.com/imgres?q=Robotic%20arm%20assembly%20mounted%20on%20the%20JetAuto%20Pro%20platform&imgurl=https%3A%2F%2Fm.media-amazon.com%2Fimages%2FI%2F61PaWlSCQUL._AC_SL3840_.jpg&imgrefurl=https%3A%2F%2Fwww.desertcart.in%2Fproducts%2F530661465-hiwonderjetauto-pro-ros2-robot-car-with-5dof-ai-vision-robotic&docid=4tmxVApxlOzMEM&tbnid=B597e0ka-PzMAM&vet=12ahUKEwivqJKj1OiXAxVfR2wGHdIGGRIQnPAOegQIShAA..i&w=749&h=1040&hcb=2&itg=1&ved=2ahUKEwivqJKj1OiXAxVfR2wGHdIGGRIQnPAOegQIShAA)" alt="Centered Image">
+</div>
 
-The gripper at the end allows the robot to hold and release objects.
 
-### Main Components
+<!-- Image alignment: Center -->
+<!-- Suggested image: JetAuto Pro with the robotic arm fully mounted -->
+<!-- Recommended width: 85–100% -->
 
-| Component | Description |
+*Figure 1: DOF 6 robotic arm mounted on the JetAuto Pro platform.*
+
+This view shows the complete robotic system and how the arm is positioned on the mobile robot.
+
+### 2.2 Standalone Robotic Arm
+
+**[INSERT IMAGE – ARM SEPARATED FROM ROBOT]**
+
+<!-- Image alignment: Center -->
+<!-- Suggested image: Robotic arm photographed separately from the JetAuto Pro -->
+
+*Figure 2: Standalone view of the robotic arm assembly.*
+
+The standalone view makes it easier to identify the arm structure, joints, servo motors, and gripper without the other robot components.
+
+### 2.3 Understanding the Degrees of Freedom
+
+**[INSERT IMAGE – LABELLED JOINT DIAGRAM]**
+
+<!-- Image alignment: Center -->
+<!-- Suggested image: Robotic arm with each joint labelled and its movement direction indicated -->
+
+*Figure 3: Joint arrangement and movement of the robotic arm.*
+
+The joints allow the arm to move and change its position. Their combined movements determine where the gripper can reach.
+
+**Note:** The exact six-axis arrangement should be confirmed using the robot's mechanical design and URDF model.
+
+## 3. Arm Components and Hardware
+
+The robotic arm uses several mechanical and electronic components to perform its movements.
+
+### 3.1 Servo Motors
+
+Servo motors are the main actuators of the robotic arm. An actuator is a device that produces physical movement.
+
+Each servo receives a target position and moves its connected joint towards that position.
+
+**[INSERT IMAGE – SERVO MOTOR USED IN THE ARM]**
+
+<!-- Image alignment: Left or Center -->
+<!-- Suggested image: Actual Hiwonder bus servo used in the JetAuto Pro arm -->
+<!-- Recommended width: 35–45% -->
+
+*Figure 4: Servo motor used in the robotic arm.*
+
+The servo motor communicates with the control system through the servo controller. It can also provide feedback about its current position.
+
+### 3.2 Main Mechanical Components
+
+**[INSERT IMAGE – ARM COMPONENTS WITH LABELS]**
+
+<!-- Image alignment: Center -->
+<!-- Suggested image: Close-up of the arm showing base, links, joints, wrist and gripper -->
+
+*Figure 5: Main mechanical sections of the robotic arm.*
+
+| Component | Function |
 |---|---|
-| Robotic arm | Mechanical structure used to reach and move objects. |
-| Servo motors | Control the movement of individual joints. |
-| Joints | Provide rotational movement to the arm. |
+| Base | Supports the robotic arm. |
+| Arm links | Connect the different joints. |
+| Joints | Allow the arm sections to rotate. |
+| Servo motors | Produce controlled movement. |
+| Wrist | Controls the orientation near the end of the arm. |
 | Gripper | Holds and releases objects. |
-| USB-to-Serial connection | Connects the servo control hardware to the JetAuto computer. |
-| Servo controller | Receives commands and communicates with the servos. |
 
-## 3. Hardware Communication
+### 3.3 Gripper
+
+The gripper is attached to the end of the robotic arm. It allows the robot to hold and release objects.
+
+**[INSERT IMAGE – GRIPPER CLOSE-UP]**
+
+<!-- Image alignment: Right or Center -->
+<!-- Suggested image: Close-up showing the gripper in open and closed positions -->
+
+*Figure 6: Robotic arm gripper.*
+
+## 4. Hardware Connection
 
 The robotic arm communicates with the JetAuto computer through a USB-to-Serial connection.
 
-During system inspection, the following device was identified:
+A serial connection allows the computer to exchange commands and feedback with the servo control hardware.
+
+### 4.1 Communication Hardware
+
+**[INSERT IMAGE – USB-TO-SERIAL CONNECTION]**
+
+<!-- Image alignment: Center -->
+<!-- Suggested image: USB cable, serial adapter and arm control connection -->
+
+*Figure 7: USB-to-Serial communication connection.*
+
+During system inspection, the following device was detected:
 
 | Parameter | Detected Value |
 |---|---|
@@ -64,73 +150,86 @@ During system inspection, the following device was identified:
 | Connection type | USB-to-Serial |
 | ROS version | ROS Melodic |
 
-The serial connection allows the computer to send movement commands to the servo controller and receive information about servo positions.
+### 4.2 Verifying the Connection
 
-**Connection verification:**
+The following commands were used to identify the connected serial device:
 
 ```bash
 ls /dev/ttyUSB*
 ls /dev/serial/by-id/
 ```
 
-The output confirmed that `/dev/ttyUSB0` was available.
+The system detected `/dev/ttyUSB0`, confirming that the USB serial device was available.
 
-## 4. ROS Software Architecture
+## 5. ROS Software Architecture
 
-The robotic arm uses several ROS packages to manage servo communication, joint control, and movement.
+The robotic arm uses ROS packages to manage communication, servo control, and joint movement.
 
-The main packages identified in the JetAuto Pro ROS workspace are:
+ROS acts as the communication layer between the software applications and the physical hardware.
+
+### 5.1 Software Architecture Overview
+
+**[INSERT IMAGE – ROS SOFTWARE ARCHITECTURE DIAGRAM]**
+
+<!-- Image alignment: Center -->
+<!-- Suggested image: Diagram showing computer, ROS packages, servo manager, controllers and servo hardware -->
+
+*Figure 8: Software architecture of the robotic arm.*
+
+The main software components identified in the JetAuto Pro workspace are:
 
 | ROS Package | Purpose |
 |---|---|
-| `hiwonder_servo_driver` | Handles communication with the servo hardware. |
-| `hiwonder_servo_controllers` | Provides ROS controllers for servo movement. |
+| `hiwonder_servo_driver` | Handles communication with servo hardware. |
+| `hiwonder_servo_controllers` | Provides controllers for servo movement. |
 | `hiwonder_servo_msgs` | Defines messages used for servo communication. |
-| `jetauto_arm_kinematics` | Provides the arm's kinematics-related functionality. |
-| `jetauto_moveit_config` | Contains the MoveIt configuration for robotic arm planning and control. |
+| `jetauto_arm_kinematics` | Provides arm kinematics-related functionality. |
+| `jetauto_moveit_config` | Contains MoveIt configuration for arm planning and control. |
 | `jetauto_sdk` | Provides the JetAuto software development interface. |
 
-### ROS Communication Structure
+### 5.2 How the Software Components Work Together
 
-The following diagram shows the main software components identified during inspection.
+The following simplified structure explains the communication flow:
 
 ```text
-              JetAuto Pro
-                   |
-             USB Connection
-                   |
-              /dev/ttyUSB0
-                   |
-          Servo Communication
-                   |
-          hiwonder_servo_driver
-                   |
-          hiwonder_servo_manager
-                   |
-       hiwonder_servo_controllers
-                   |
-          +--------+--------+
-          |                 |
-     Arm Controllers   Gripper Controller
-          |                 |
-     Joint Commands     Gripper Commands
-          |                 |
-       Servo Motors      Gripper
+        User Application
+               |
+               v
+          ROS Commands
+               |
+               v
+       Servo Manager Node
+               |
+               v
+       Servo Controllers
+               |
+               v
+        Serial Interface
+               |
+               v
+         Servo Motors
+               |
+               v
+       Robotic Arm Movement
 ```
 
-*Figure 2: Simplified ROS communication structure of the robotic arm.*
+The servo manager handles communication with the servo hardware. Controllers receive movement commands and pass them to the appropriate servos.
 
-## 5. ROS Nodes and Controllers
+## 6. ROS Nodes and Controllers
 
-A ROS node is a running program that performs a particular task. Controllers manage the movement of individual joints or groups of joints.
+A **ROS node** is a running software process that performs a particular task.
 
-During system inspection, the following node was identified:
+A **controller** manages how a joint or group of joints responds to movement commands.
 
-| Node | Status / Purpose |
-|---|---|
-| `/hiwonder_servo_manager` | Running; manages servo communication and controller interfaces. |
+### 6.1 Servo Manager
 
-The following controllers were available:
+The main servo management node identified during inspection was:
+
+`/hiwonder_servo_manager`
+
+This node was running and provided communication interfaces for the arm and gripper controllers.
+
+### 6.2 Available Controllers
 
 | Controller | Function |
 |---|---|
@@ -140,25 +239,28 @@ The following controllers were available:
 | `/joint4_controller` | Controls joint 4. |
 | `/r_joint_controller` | Controls the rotational joint. |
 | `/arm_controller` | Provides coordinated arm trajectory control. |
-| `/gripper_controller` | Controls the gripper movement. |
+| `/gripper_controller` | Controls the gripper. |
+
+**[INSERT IMAGE – ARM CONTROL INTERFACE]**
+
+<!-- Image alignment: Center -->
+<!-- Suggested image: Screenshot of the JetAuto arm control application or joystick interface -->
+
+*Figure 9: Robotic arm control interface.*
 
 The individual joint controllers allow separate joint commands, while the arm controller provides an interface for coordinated movement.
 
-## 6. ROS Topics
+## 7. ROS Communication Topics
 
-ROS topics allow nodes to exchange information through messages.
+ROS topics allow different nodes to exchange information.
 
-The following topics were identified using:
+For example, an application can send a movement command through a topic, and the servo manager can process that command.
 
-```bash
-rostopic list | grep -Ei "servo|arm|joint|kinematic"
-```
-
-### Important Topics
+### 7.1 Important Topics
 
 | Topic | Purpose |
 |---|---|
-| `/joint_states` | Publishes the current joint states. |
+| `/joint_states` | Publishes current joint states. |
 | `/arm_controller/command` | Receives arm movement commands. |
 | `/arm_controller/state` | Publishes arm controller feedback. |
 | `/joint1_controller/command` | Sends commands to joint 1. |
@@ -166,31 +268,55 @@ rostopic list | grep -Ei "servo|arm|joint|kinematic"
 | `/joint3_controller/command` | Sends commands to joint 3. |
 | `/joint4_controller/command` | Sends commands to joint 4. |
 | `/r_joint_controller/command` | Sends commands to the rotational joint. |
-| `/gripper_controller/follow_joint_trajectory/goal` | Receives gripper trajectory goals. |
-| `/servo_controllers/port_id_1/servo_states` | Publishes servo feedback information. |
+| `/servo_controllers/port_id_1/servo_states` | Publishes servo feedback. |
 
-The arm also provides trajectory-related topics such as `goal`, `feedback`, `result`, and `status`. These support communication between the controller and ROS applications.
+### 7.2 Understanding Command and Feedback
 
-## 7. Servo State Monitoring
+**[INSERT IMAGE – COMMAND AND FEEDBACK FLOW]**
 
-The servo state topic was used to verify communication between ROS and the servo hardware.
+<!-- Image alignment: Center -->
+<!-- Suggested image: Two-way diagram showing movement commands going to the servo and feedback returning to ROS -->
+
+*Figure 10: Command and feedback communication between ROS and the servo hardware.*
+
+The communication process has two main parts:
+
+1. **Command:** ROS sends a target position to the controller.
+2. **Feedback:** The servo manager publishes information about the servo's reported position.
+
+This allows the software to monitor the response of the hardware.
+
+## 8. Servo State Monitoring
+
+Servo feedback helps verify whether the hardware is communicating with ROS.
+
+The following command was used to monitor servo states:
 
 ```bash
 rostopic echo /servo_controllers/port_id_1/servo_states
 ```
 
-The output contained the following information:
+### 8.1 Understanding Servo Feedback
+
+**[INSERT IMAGE – TERMINAL SCREENSHOT OF SERVO STATES]**
+
+<!-- Image alignment: Center -->
+<!-- Suggested image: Actual terminal output showing servo IDs, goal, position, error and voltage -->
+
+*Figure 11: Servo state information received through ROS.*
+
+The output contains the following fields:
 
 | Field | Meaning |
 |---|---|
-| `id` | Unique identifier of the servo. |
-| `goal` | Target position requested for the servo. |
-| `position` | Current reported servo position. |
-| `error` | Difference between the target and reported position. |
-| `voltage` | Reported servo supply voltage. |
-| `timestamp` | Time at which the state was recorded. |
+| `id` | Servo identifier. |
+| `goal` | Requested target position. |
+| `position` | Reported current position. |
+| `error` | Difference between target and reported position. |
+| `voltage` | Reported servo voltage. |
+| `timestamp` | Time of the recorded state. |
 
-### Observed Test Results
+### 8.2 Observed Servo Values
 
 Five servo IDs were visible in the recorded output.
 
@@ -202,37 +328,82 @@ Five servo IDs were visible in the recorded output.
 | 4 | 667 | 667 | 0 | 9000 |
 | 5 | 500 | 500 | 0 | 9000 |
 
-The reported goal and position values matched for all five servos, with an error of zero.
+The recorded goal and position values matched for all five servos. Each servo also reported an error value of zero.
 
-This confirms that ROS was receiving servo state information and that the reported positions matched their requested targets during this observation.
+This confirms that the ROS system was receiving servo feedback and that the reported positions matched the requested targets during the observation.
 
-*Note: The values above are raw servo feedback values, not joint angles in degrees.*
+*Note: These are raw servo position values, not angles in degrees.*
 
-## 8. System Verification
+## 9. System Verification
 
-The following checks were performed to inspect the robotic arm integration.
+Several ROS commands were used to inspect the hardware connection, running nodes, available packages, and communication topics.
+
+### 9.1 Verification Results
 
 | Test | Command | Observation |
 |---|---|---|
 | ROS node inspection | `rosnode list` | Servo manager was running. |
-| Topic inspection | `rostopic list` | Arm, joint, gripper, and servo topics were available. |
+| Topic inspection | `rostopic list` | Arm, joint and servo topics were available. |
 | Hardware connection | `ls /dev/ttyUSB*` | `/dev/ttyUSB0` was detected. |
 | Serial identification | `ls /dev/serial/by-id/` | USB serial device was identified. |
 | Servo feedback | `rostopic echo /servo_controllers/port_id_1/servo_states` | Five servo IDs reported position information. |
-| Node inspection | `rosnode info /hiwonder_servo_manager` | Publishers, subscribers, and services were identified. |
-| Package inspection | `rospack list` | Arm and servo-related ROS packages were available. |
+| Node inspection | `rosnode info /hiwonder_servo_manager` | Publishers, subscribers and services were identified. |
+| Package inspection | `rospack list` | Arm and servo-related packages were available. |
 
-## 9. Summary
+### 9.2 ROS Node Inspection
+
+**[INSERT IMAGE – ROS NODE LIST]**
+
+<!-- Image alignment: Center -->
+<!-- Suggested image: Terminal screenshot showing rosnode list output -->
+
+*Figure 12: Running ROS nodes on the JetAuto Pro.*
+
+### 9.3 ROS Topic Inspection
+
+**[INSERT IMAGE – ROS TOPIC LIST]**
+
+<!-- Image alignment: Center -->
+<!-- Suggested image: Terminal screenshot showing arm and servo-related topics -->
+
+*Figure 13: Available arm and servo communication topics.*
+
+## 10. Summary
 
 The DOF 6 robotic arm is integrated with the JetAuto Pro platform through a USB-to-Serial connection and ROS Melodic.
 
-The inspection confirmed that:
+The system inspection confirmed that:
+
 - The servo hardware was detected through `/dev/ttyUSB0`.
 - The Hiwonder servo manager was running.
-- Arm, joint, and gripper controller interfaces were available.
+- Arm, joint and gripper controller interfaces were available.
 - ROS topics provided interfaces for sending commands and receiving feedback.
 - Five servo IDs were reporting position information.
 
-These components provide the software foundation required to control the robotic arm and develop manipulation applications.
+These components provide the software foundation for controlling the robotic arm and developing manipulation applications.
 
-**Configuration note:** The recorded ROS inspection identifies five arm joint controllers and a separate gripper controller. The exact six-DOF joint configuration should be confirmed from the robot's URDF or MoveIt configuration before publishing a final joint specification.
+**Configuration note:** The recorded ROS inspection identifies five arm joint controllers and a separate gripper controller. The exact six-DOF joint configuration should be confirmed using the robot's URDF or MoveIt configuration before publishing a final joint specification.
+
+---
+
+## Image Placement Checklist
+
+Before publishing the documentation, add the following images:
+
+| Figure | Image Required |
+|---|---|
+| 1 | Complete JetAuto Pro with mounted arm |
+| 2 | Standalone robotic arm |
+| 3 | Labelled joint and DOF diagram |
+| 4 | Actual servo motor |
+| 5 | Arm mechanical components |
+| 6 | Gripper close-up |
+| 7 | USB-to-Serial connection |
+| 8 | ROS software architecture |
+| 9 | Arm control software interface |
+| 10 | Command and feedback flow |
+| 11 | Servo state terminal output |
+| 12 | Running ROS nodes |
+| 13 | ROS arm and servo topics |
+
+**Documentation tip:** Prefer actual photographs of your JetAuto Pro hardware and screenshots from your own ROS environment. Use diagrams only where they explain something that a photograph cannot show, such as joint movement or software communication.
