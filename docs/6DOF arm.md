@@ -30,7 +30,9 @@ On the JetAuto Pro platform, the robotic arm uses servo motors for movement. ROS
 
 ## 2. Robotic Arm Overview
 
-**[Insert Image: DOF 6 Robotic Arm mounted on JetAuto Pro]**
+<img width="409" height="488" alt="image" src="https://github.com/user-attachments/assets/d28b42e0-5fad-4d15-9353-3884da594e62" />
+
+<img width="379" height="527" alt="image" src="https://github.com/user-attachments/assets/7e410195-21af-423b-a2f9-58129b68ce17" />
 
 *Figure 1: Robotic arm assembly mounted on the JetAuto Pro platform.*
 
