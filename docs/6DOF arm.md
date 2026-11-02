@@ -38,16 +38,9 @@ The robotic arm consists of a series of connected sections, movable joints, and 
 
 ### 2.1 Arm Mounted on JetAuto Pro
 
-<img width="379" height="527" alt="image" src="https://github.com/user-attachments/assets/3edd407b-75db-4f9c-b7e1-c74d9a872f38" />
-
 <div align="center">
-  <img src="https://github.com/user-attachments/assets/3edd407b-75db-4f9c-b7e1-c74d9a872f38" alt="Centered Image">
+  <img src="https://github.com/user-attachments/assets/3edd407b-75db-4f9c-b7e1-c74d9a872f38" width="100" alt="Centered Image">
 </div>
-
-
-<!-- Image alignment: Center -->
-<!-- Suggested image: JetAuto Pro with the robotic arm fully mounted -->
-<!-- Recommended width: 85–100% -->
 
 *Figure 1: DOF 6 robotic arm mounted on the JetAuto Pro platform.*
 
@@ -55,10 +48,7 @@ This view shows the complete robotic system and how the arm is positioned on the
 
 ### 2.2 Standalone Robotic Arm
 
-**[INSERT IMAGE – ARM SEPARATED FROM ROBOT]**
-
-<!-- Image alignment: Center -->
-<!-- Suggested image: Robotic arm photographed separately from the JetAuto Pro -->
+<img align="center" width="557" height="514" alt="image" src="https://github.com/user-attachments/assets/7437a33d-5c93-4ce2-ae0e-831a4c5cd1c5" />
 
 *Figure 2: Standalone view of the robotic arm assembly.*
 
@@ -87,15 +77,12 @@ Servo motors are the main actuators of the robotic arm. An actuator is a device 
 
 Each servo receives a target position and moves its connected joint towards that position.
 
-**[INSERT IMAGE – SERVO MOTOR USED IN THE ARM]**
-
-<!-- Image alignment: Left or Center -->
-<!-- Suggested image: Actual Hiwonder bus servo used in the JetAuto Pro arm -->
-<!-- Recommended width: 35–45% -->
+<img align="center" width="379" height="373" alt="image" src="https://github.com/user-attachments/assets/1a88fbb5-0634-4ebf-8309-f6b7bfdbba2f" />
 
 *Figure 4: Servo motor used in the robotic arm.*
 
 The servo motor communicates with the control system through the servo controller. It can also provide feedback about its current position.
+
 
 ### 3.2 Main Mechanical Components
 
@@ -191,27 +178,7 @@ The main software components identified in the JetAuto Pro workspace are:
 
 The following simplified structure explains the communication flow:
 
-```text
-        User Application
-               |
-               v
-          ROS Commands
-               |
-               v
-       Servo Manager Node
-               |
-               v
-       Servo Controllers
-               |
-               v
-        Serial Interface
-               |
-               v
-         Servo Motors
-               |
-               v
-       Robotic Arm Movement
-```
+<img width="200" height="349" alt="sofcomro drawio" src="https://github.com/user-attachments/assets/44044f43-1d85-4d2c-b4d1-881f26cb2b5c" />
 
 The servo manager handles communication with the servo hardware. Controllers receive movement commands and pass them to the appropriate servos.
 
